@@ -69,8 +69,7 @@ export default function ChatComposer({ open, onSend }: { open: boolean; onSend: 
   return (
     <div
       ref={composerRef}
-      className="w-full     px-3 pb-2"
-}
+      className="w-full     px-3 pb-2">
       aria-label="Chat composer"
     >
       <div className="mx-auto max-w-[min(980px,calc(100%-16px))] relative">
