@@ -1,8 +1,6 @@
 'use client';
-import { emit as busEmit } from x27@/utils/busx27;
-import { emit as busEmit } from '@/utils/bus';
 import * as React from 'react';
-import { emit as busEmit } from x27@/utils/busx27;
+import { emit as busEmit } from '@/utils/bus';
 
 
 type Props = {
