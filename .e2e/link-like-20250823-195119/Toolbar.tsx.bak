@@ -1,0 +1,72 @@
+"use client";
+import React, { useEffect, useRef } from "react";
+
+type Props = {
+  onPrev?: () => void;
+  onNext?: () => void;
+  micOn?: boolean;
+  camOn?: boolean;
+  onToggleMic?: () => void;
+  onToggleCam?: () => void;
+};
+
+export default function Toolbar({
+  onPrev, onNext,
+  micOn = true, camOn = true,
+  onToggleMic, onToggleCam,
+}: Props) {
+  const ref = useRef<HTMLDivElement|null>(null);
+
+  // قياس ارتفاع الشريط وكتابته في --tb-h (مرة واحدة + عند تغيير الحجم/الاتجاه)
+  useEffect(() => {
+    const setH = () => {
+      const h = ref.current?.offsetHeight || 0;
+      document.documentElement.style.setProperty("--tb-h", `${h}px`);
+    };
+    setH();
+    const ro = new ResizeObserver(setH);
+    if (ref.current) ro.observe(ref.current);
+    const vv = (window as any).visualViewport;
+    vv?.addEventListener?.("resize", setH);
+    vv?.addEventListener?.("scroll", setH);
+    window.addEventListener("orientationchange", setH);
+    return () => {
+      try { if (ref.current) ro.unobserve(ref.current); ro.disconnect(); } catch {}
+      vv?.removeEventListener?.("resize", setH);
+      vv?.removeEventListener?.("scroll", setH);
+      window.removeEventListener("orientationchange", setH);
+    };
+  }, []);
+
+  const Btn = (p: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button
+      {...p}
+      className={"shrink-0 h-10 px-3 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 " + (p.className||"")}
+    />
+  );
+
+  return (
+    <div ref={ref} className="w-full bg-black/30 backdrop-blur-md border-t border-white/10">
+      <div className="flex items-center gap-2 px-2 py-2">
+        <div className="flex-1 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2 min-w-max">
+            <Btn onClick={onToggleMic} aria-label="Toggle mic">
+              {/** emoji placeholders */}{/* 🎤/🔇 */}
+              <span>{micOn ? "🎤 Mic" : "🔇 Mic"}</span>
+            </Btn>
+            <Btn onClick={onToggleCam} aria-label="Toggle camera">
+              <span>{camOn ? "📷 Cam" : "🚫 Cam"}</span>
+            </Btn>
+
+            <div className="mx-2 w-px h-6 bg-white/10" />
+
+            <Btn onClick={onPrev} aria-label="Prev">⬅︎ Prev</Btn>
+            <Btn onClick={onNext} aria-label="Next">Next ➡︎</Btn>
+
+            {/** مساحة مستقبلية لأزرار مدفوعة/Boost الخ... تُدار عبر gating لاحقًا */}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

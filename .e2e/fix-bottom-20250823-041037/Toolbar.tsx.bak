@@ -1,0 +1,87 @@
+"use client";
+import React, { useEffect, useRef } from "react";
+
+type Props = {
+  onPrev: () => void;
+  onNext: () => void;
+  onStop: () => void;
+  onToggleChat: () => void;
+  onToggleMic: () => void;
+  onToggleCam: () => void;
+  onToggleSpeaker: () => void;
+  onSwitchCam: () => void;
+  onReport: () => void;
+  onBeauty: () => void;
+  onSettings: () => void;
+  onLike: () => void;
+  micOn: boolean;
+  camOn: boolean;
+  speakerOn: boolean;
+  beautyOn?: boolean;
+  composerOpen?: boolean;
+};
+
+export default function Toolbar(props: Props) {
+  const barRef = useRef<HTMLDivElement|null>(null);
+
+  // قياس الارتفاع وتحديث --tb-h مرة عند التركيب وكلما تغيّر الحجم
+  useEffect(() => {
+    const root = document.documentElement;
+    const measure = () => {
+      const h = barRef.current?.offsetHeight ?? 0;
+      root.style.setProperty("--tb-h", `${h}px`);
+    };
+    const ro = new ResizeObserver(measure);
+    if (barRef.current) ro.observe(barRef.current);
+    measure();
+    return () => ro.disconnect();
+  }, []);
+
+  const icon = "h-10 w-10 grid place-items-center rounded-full bg-white/10 hover:bg-white/20 backdrop-blur text-lg";
+  const active = "bg-sky-600 text-white hover:bg-sky-600";
+
+  return (
+    <div
+      ref={barRef}
+      data-toolbar-version="fix-bottom-v1"
+      className="fixed bottom-0 left-0 right-0 z-30 pointer-events-auto"
+      style={{ paddingBottom: "var(--safe-b,0px)" }}
+    >
+      <div className="mx-auto max-w-[1100px] px-3 py-2">
+        <div className="flex items-center justify-between gap-2 rounded-t-2xl bg-black/30 backdrop-blur-md p-2">
+          {/* Prev */}
+          <button
+            onClick={props.onPrev}
+            className="h-11 md:h-12 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-sm md:text-base font-medium select-none"
+            aria-label="Prev"
+          >
+            Prev
+          </button>
+
+          {/* Icons grid */}
+          <div className="grid grid-cols-5 md:grid-cols-10 grid-rows-2 md:grid-rows-1 place-items-center gap-2 md:gap-3">
+            <button className={`${icon} ${props.composerOpen ? active : ""}`} onClick={props.onToggleChat} aria-label="Chat">💬</button>
+            <button className={`${icon} ${!props.camOn ? active : ""}`} onClick={props.onToggleCam} aria-label="Cam on/off">🎥</button>
+            <button className={`${icon}`} onClick={props.onSwitchCam} aria-label="Switch camera">🔄</button>
+            <button className={`${icon} ${!props.micOn ? active : ""}`} onClick={props.onToggleMic} aria-label="Mic on/off">{props.micOn ? "🎙️" : "🔇"}</button>
+            <button className={`${icon} ${!props.speakerOn ? active : ""}`} onClick={props.onToggleSpeaker} aria-label="Speaker on/off">{props.speakerOn ? "🔊" : "🔇"}</button>
+            <button className={`${icon} bg-red-600/90 hover:bg-red-600`} onClick={props.onStop} aria-label="Stop">⏹</button>
+            <button className={`${icon}`} onClick={props.onBeauty} aria-label="Beauty">✨</button>
+            <button className={`${icon}`} onClick={props.onReport} aria-label="Report">⚠️</button>
+            <button className={`${icon}`} onClick={props.onSettings} aria-label="Settings">⚙️</button>
+            <button className={`${icon}`} onClick={props.onLike} aria-label="Like">❤️</button>
+          </div>
+
+          {/* Next */}
+          <button
+            onClick={props.onNext}
+            className="h-11 md:h-12 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-sm md:text-base font-medium select-none"
+            aria-label="Next"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,111 @@
+"use client";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import Toolbar from "@/components/chat/Toolbar";
+import LowerRightQuick from "@/components/chat/LowerRightQuick";
+import ChatComposer from "@/components/chat/ChatComposer";
+import ChatMessages from "@/components/chat/ChatMessages";
+
+type ChatMsg = { id: string; from: "me" | "peer"; text: string; at?: number };
+
+const SWIPE_THRESHOLD = 80; // px
+const AUTO_DIM_MS = 5000;
+
+export default function ChatPage() {
+  // demo state for messages
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    { id: "m1", from: "peer", text: "👋 Hi there" },
+    { id: "m2", from: "me", text: "Hello!" },
+  ]);
+
+  const addMessage = useCallback((t: string) => {
+    setMessages((xs) => [...xs, { id: String(Date.now()), from: "me", text: t }]);
+  }, []);
+
+  // swipe prev/next — horizontal 80px
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const swiping = useRef(false);
+
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    swiping.current = true;
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+  }, []);
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!swiping.current) return;
+    const dx = e.clientX - startX.current;
+    const dy = e.clientY - startY.current;
+    if (Math.abs(dx) >= SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 0) handlePrev();
+      else handleNext();
+      swiping.current = false;
+    }
+  }, []);
+  const onPointerUp = useCallback(() => {
+    swiping.current = false;
+  }, []);
+
+  const handlePrev = useCallback(() => {
+    // TODO: integrate matcher navigation
+    // console.log("Prev");
+  }, []);
+  const handleNext = useCallback(() => {
+    // TODO: integrate matcher navigation
+    // console.log("Next");
+  }, []);
+
+  // auto-dim after 5s idle; restore on interaction
+  const [idle, setIdle] = useState(false);
+  const idleTimer = useRef<number | null>(null);
+  const bump = useCallback(() => {
+    setIdle(false);
+    if (idleTimer.current) window.clearTimeout(idleTimer.current);
+    // @ts-ignore
+    idleTimer.current = window.setTimeout(() => setIdle(true), AUTO_DIM_MS);
+  }, []);
+  useEffect(() => {
+    bump();
+    const reset = () => bump();
+    const events = ["pointerdown", "mousemove", "keydown", "touchstart"];
+    events.forEach((n) => window.addEventListener(n, reset, { passive: true }));
+    return () => events.forEach((n) => window.removeEventListener(n, reset));
+  }, [bump]);
+
+  return (
+    <main className="min-h-[100dvh] w-screen overflow-hidden text-white bg-gradient-to-b from-slate-900 via-slate-900 to-black">
+      {/* Grid: 2 video rows + toolbar + composer */}
+      <div
+        className="grid grid-rows-[1fr_1fr_auto_auto] h-[100dvh] chat-safe-pad"
+        style={{ touchAction: "pan-x" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+      >
+        {/* Row 1: local/remote video section A (placeholder) */}
+        <div className="relative">
+          {/* your video element(s) go here */}
+        </div>
+
+        {/* Row 2: overlayed message dock + quick actions in lower-right */}
+        <div className="relative">
+          <div className={`absolute inset-x-2 bottom-2 transition-opacity ${idle ? "opacity-70" : "opacity-100"}`}>
+            <ChatMessages items={messages} mode="latest" />
+          </div>
+          <div className="absolute right-2 bottom-2">
+            <LowerRightQuick />
+          </div>
+        </div>
+
+        {/* Row 3: Toolbar (always visible, measures --tb-h internally) */}
+        <div className={`transition-opacity ${idle ? "opacity-70" : "opacity-100"}`}>
+          <Toolbar onPrev={handlePrev} onNext={handleNext} />
+        </div>
+
+        {/* Row 4: Composer (transparent, updates --composer-h when open) */}
+        <div>
+          <ChatComposer onSend={addMessage} />
+        </div>
+      </div>
+    </main>
+  );
+}

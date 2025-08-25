@@ -1,0 +1,54 @@
+"use client";
+import React from "react";
+import CountryPicker from "./CountryPicker";
+import GenderPicker, { type Gender } from "./GenderPicker";
+
+export type PeerInfo = {
+  name?: string;
+  avatarUrl?: string;
+  country?: string;
+  city?: string;
+  gender?: Gender;   // male|female|couple|lgbt|any
+  likes?: number;
+  isVip?: boolean;
+};
+export type Filters = { countryPref?: string; genderPref?: Gender | "any" };
+export type PeerHeaderProps = { info: PeerInfo; filters: Filters; onFiltersChange?: (f: Filters) => void; };
+
+export default function PeerHeader({ info, filters, onFiltersChange }: PeerHeaderProps) {
+  const onCountry = (v: string) => onFiltersChange?.({ ...filters, countryPref: v || "" });
+  const onGender = (g: any) => onFiltersChange?.({ ...filters, genderPref: g });
+
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      {/* TL: avatar + name + likes + VIP */}
+      <div className="pointer-events-auto absolute top-3 left-3 z-20 flex items-center gap-2 text-white drop-shadow">
+        <div className="h-9 w-9 rounded-full overflow-hidden bg-white/10 border border-white/10 grid place-items-center">
+          {info.avatarUrl
+            ? <img src={info.avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+            : <span className="text-sm">{info.name?.slice(0,1)?.toUpperCase() || "?"}</span>}
+        </div>
+        {info.name && <div className="px-2 py-1 rounded bg-black/40 border border-white/10 text-white/90 text-xs">{info.name}</div>}
+        <div className="px-2 py-1 rounded bg-black/40 border border-white/10 text-white/90 text-xs">❤️ {info.likes ?? 0}</div>
+        <div className={"px-2 py-1 rounded bg-black/40 border border-white/10 text-white/90 text-xs vip-badge " + (!info.isVip ? "vip-badge--off" : "")}>👑 VIP</div>
+      </div>
+
+      {/* TR: country + gender pickers (fixed) */}
+      <div className="pointer-events-auto absolute top-3 right-3 z-30 flex items-center gap-2 text-white text-sm">
+        <CountryPicker value={filters.countryPref || ""} onChange={onCountry} />
+        <GenderPicker value={(filters.genderPref as any) || "any"} onChange={(g)=>onGender(g)} />
+      </div>
+
+      {/* BL: peer geo + gender symbol */}
+      <div className="pointer-events-auto absolute bottom-3 left-3 z-20 text-white/90 flex items-center gap-2">
+        <span className="px-2 py-1 rounded bg-black/40 border border-white/10 text-xs">
+          {info.country || "—"}{info.city ? `, ${info.city}` : ""}
+        </span>
+        <span className={`px-2 py-1 rounded bg-black/40 border border-white/10 text-sm ${
+          info.gender==="male"?"text-blue-300":info.gender==="female"?"text-red-300":info.gender==="couple"?"text-fuchsia-300":""}`}>
+          {info.gender==="male"?"♂":info.gender==="female"?"♀":info.gender==="couple"?"💑":info.gender==="lgbt"?"🌈":"∗"}
+        </span>
+      </div>
+    </div>
+  );
+}

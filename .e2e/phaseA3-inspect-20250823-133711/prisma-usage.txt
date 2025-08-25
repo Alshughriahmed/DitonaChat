@@ -1,0 +1,11 @@
+3:import { authOptions, prisma } from "@/lib/auth";
+17:    const existing = await prisma.like.findUnique({
+23:      await prisma.like.delete({ where: { id: existing.id } });
+26:      await prisma.like.create({
+33:    const total = await prisma.like.count({ where: { toId: peerId } });
+36:    await prisma.profile.updateMany({
+17:    const existing = await prisma.like.findUnique({
+23:      await prisma.like.delete({ where: { id: existing.id } });
+26:      await prisma.like.create({
+33:    const total = await prisma.like.count({ where: { toId: peerId } });
+36:    await prisma.profile.updateMany({

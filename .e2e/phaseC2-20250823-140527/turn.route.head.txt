@@ -1,0 +1,49 @@
+     1	import { NextResponse } from "next/server";
+     2	
+     3	export const dynamic = "force-dynamic";
+     4	
+     5	function parseCsv(s: string): string[] {
+     6	  return (s || "").split(",").map(v => v.trim()).filter(Boolean);
+     7	}
+     8	
+     9	export async function GET() {
+    10	  // STUN: اختياري عبر STUN_URLS، وإلا Google
+    11	  const stunUrls = parseCsv(process.env.STUN_URLS || "");
+    12	  const stun = stunUrls.length ? stunUrls : ["stun:stun.l.google.com:19302"];
+    13	
+    14	  // TURN عبر ENV
+    15	  const turnUrls = parseCsv(process.env.TURN_URLS || "");
+    16	  const username = process.env.TURN_USERNAME || "";
+    17	  const credential = process.env.TURN_CREDENTIAL || "";
+    18	
+    19	  const iceServers: any[] = [...stun.map(urls => ({ urls }))];
+    20	
+    21	  if (turnUrls.length) {
+    22	    const turnEntry: any = { urls: turnUrls };
+    23	    if (username) turnEntry.username = username;
+    24	    if (credential) turnEntry.credential = credential;
+    25	    iceServers.push(turnEntry);
+    26	  }
+    27	
+    28	  const body: any = { iceServers, ts: Date.now() };
+    29	
+    30	  // Debug آمن في التطوير فقط (لا يطبع الأسرار)
+    31	  if (process.env.NODE_ENV !== "production" && process.env.TURN_DEBUG === "1") {
+    32	    body.debug = {
+    33	      hasTURN: turnUrls.length > 0,
+    34	      turnUrlsCount: turnUrls.length,
+    35	      hasUser: !!username,
+    36	      hasCred: !!credential,
+    37	      stunCount: stun.length
+    38	    };
+    39	  }
+    40	
+    41	  // تأكد من عدم التخزين
+    42	  return new NextResponse(JSON.stringify(body), {
+    43	    status: 200,
+    44	    headers: {
+    45	      "content-type": "application/json; charset=utf-8",
+    46	      "cache-control": "no-store, max-age=0"
+    47	    }
+    48	  });
+    49	}

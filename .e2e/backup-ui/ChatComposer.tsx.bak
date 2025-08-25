@@ -1,0 +1,100 @@
+"use client";
+import React, { useEffect, useRef, useState } from "react";
+
+type Props = {
+  open?: boolean;                         // افتراضي: يظهر
+  onSend: (text: string) => void;
+  onClose?: () => void;
+};
+
+export default function ChatComposer({ open=true, onSend, onClose }: Props){
+  const composerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [text, setText] = useState("");
+
+  // حدّث --composer-h عند تغيّر ارتفاع الصندوق
+  useEffect(()=>{
+    const el = composerRef.current;
+    if(!el) return;
+    const setVar = () => {
+      const h = el.offsetHeight || 0;
+      document.documentElement.style.setProperty('--composer-h', h + 'px');
+    };
+    const ro = new ResizeObserver(setVar);
+    ro.observe(el);
+    setVar();
+    return ()=> ro.disconnect();
+  },[]);
+
+  // حدّث --kb-pad بناءً على visualViewport (عند ظهور الكيبورد)
+  useEffect(()=>{
+    const vv = (globalThis as any).visualViewport;
+    const upd = () => {
+      const safe = (typeof window !== 'undefined') ? window.innerHeight : 0;
+      const cur = vv ? vv.height : safe;
+      const pad = Math.max(0, safe - cur);
+      document.documentElement.style.setProperty('--kb-pad', pad + 'px');
+    };
+    upd();
+    vv?.addEventListener('resize', upd);
+    window.addEventListener('resize', upd);
+    return ()=>{
+      vv?.removeEventListener('resize', upd);
+      window.removeEventListener('resize', upd);
+    };
+  },[]);
+
+  const handleSend = () => {
+    const t = text.trim();
+    if(!t) return;
+    onSend(t);
+    setText("");
+    // أبقِ التركيز في الحقل
+    inputRef.current?.focus();
+  };
+
+  if(!open) return null;
+
+  return (
+    <div
+      ref={composerRef}
+      className="fixed left-0 right-0 z-20 px-3 pb-2"
+      style={{ bottom: 'calc(var(--tb-h) + var(--kb-pad) + var(--safe-b))' }}
+      aria-label="Chat composer"
+      data-composer-version="v1"
+    >
+    <div className="mx-auto max-w-screen-sm">
+      <div className="flex items-center gap-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 px-3 py-2">
+      
+      <div className="mx-auto max-w-screen-md bg-black/40 backdrop-blur-md rounded-xl p-2 shadow-lg">
+        <div className="flex items-center gap-2">
+          <input
+            ref={inputRef}
+            className="flex-1 bg-transparent border-b border-white/30 focus:outline-none text-white placeholder-white/60 px-2 py-2"
+            placeholder="Type a message..."
+            value={text}
+            onChange={(e)=>setText(e.target.value)}
+            onKeyDown={(e)=>{ if(e.key === 'Enter') handleSend(); }}
+            aria-label="Type a message"
+          />
+          <button
+            onClick={handleSend}
+            className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+            aria-label="Send"
+            title="Send"
+          >
+            Send
+          </button>
+          <button
+            onClick={onClose}
+            className="px-2 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+            aria-label="Close composer"
+            title="Close"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

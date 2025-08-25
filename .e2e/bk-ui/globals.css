@@ -1,0 +1,232 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --tb-h: 64px;        /* افتراضي حتى يتم القياس */
+  --composer-h: 0px;   /* يُحدَّث من الكومبوزر */
+}
+
+/* إخفاء شريط التمرير مع بقاء اللمس يعمل */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* DitonaChat: lock WebRTC videos to their grid rows */
+.chat-grid > :nth-child(1),
+.chat-grid > :nth-child(2) { position: relative; min-height: 0; overflow: hidden; }
+
+.chat-grid > :nth-child(1) video,
+.chat-grid > :nth-child(2) video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* --- DitonaChat: keep bottom rows above, videos clipped & non-blocking --- */
+.chat-grid > :nth-child(3),
+.chat-grid > :nth-child(4) { position: relative; z-index: 30; }
+
+.chat-grid > :nth-child(1),
+.chat-grid > :nth-child(2) { position: relative; min-height: 0; overflow: hidden; }
+
+.chat-grid > :nth-child(1) video,
+.chat-grid > :nth-child(2) video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; pointer-events: none;
+}
+
+/* --- DitonaChat: keep bottom rows above, videos clipped & non-blocking --- */
+.chat-grid > :nth-child(3),
+.chat-grid > :nth-child(4) { position: relative; z-index: 20; }
+
+.chat-grid > :nth-child(1),
+.chat-grid > :nth-child(2) { position: relative; min-height: 0; overflow: hidden; }
+.chat-grid > :nth-child(1) video,
+.chat-grid > :nth-child(2) video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+
+/* keep bottom content clear of composer height */
+[data-grid="chat"]{ padding-bottom: calc(var(--composer-h, 0px) + 12px); }
+
+
+/* Chat tray tweaks */
+.chat-tray .scroll-area { overscroll-behavior: contain; }
+
+/* Thin scrollbar (Firefox) */
+.chat-tray .scroll-area { scrollbar-width: thin; }
+
+/* Thin scrollbar (WebKit) */
+.chat-tray .scroll-area::-webkit-scrollbar { height: 6px; width: 6px; }
+.chat-tray .scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.35); border-radius: 9999px; }
+.chat-tray .scroll-area::-webkit-scrollbar-track { background: transparent; }
+
+/* đảmّن تراكب الرسائل لا يحجب الفيديو */
+.chat-scroll{overscroll-behavior:contain;}
+
+/* === Chat overlay helpers === */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.touch-pan-y { touch-action: pan-y; }
+/* نحافظ على الطبقات: التولبار فوق الرسائل، والـcomposer فوق التولبار */
+:root { --tb-h: 64px; --composer-h: 72px; --safe-b: env(safe-area-inset-bottom); }
+
+/* --- DitonaChat: video helpers --- */
+.video-self.mirrored { transform: scaleX(-1); }
+
+/* ثلاث مستويات للـBeauty */
+.video-beauty         { filter: contrast(1.06) saturate(1.10) brightness(1.04) blur(0.6px); }
+.video-beauty-strong  { filter: contrast(1.12) saturate(1.16) brightness(1.06) blur(1.0px); }
+.video-beauty-max     { filter: contrast(1.20) saturate(1.20) brightness(1.08) blur(1.6px); }
+
+/* قناع تمويه بسيط لزر Mask كتجربة */
+.video-mask { filter: blur(6px) brightness(0.98); }
+/* END DitonaChat video helpers */
+
+/* --- CHAT TRAY (mobile-first, transparent bottom overlay) --- */
+.chat-tray {
+  position: absolute;
+  left: 0; right: 0;
+  /* نثبت فوق شريط الأدوات + حافة الـsafe + ارتفاع حقل الإدخال إن وُجد */
+  bottom: calc(var(--tb-h, 0px) + var(--composer-h, 0px) + 8px);
+  pointer-events: auto;
+  background: transparent;
+  z-index: 40; /* أعلى من الفيديو وأسفل التوستات */
+}
+.chat-tray__log {
+  margin: 0 auto;
+  max-width: min(800px, 92vw);
+  /* نعرض فقط آخر ~3 فقاعات تقريباً */
+  max-height: clamp(96px, 28vh, 220px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* تلاشي علوي لطيف عند وجود رسائل كثيرة */
+  mask-image: linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0.0));
+}
+.chat-tray__log::-webkit-scrollbar { display: none; }
+.chat-tray__log { scrollbar-width: none; }
+
+/* فقاعات عامة (نطبّقها على عدة أسماء حتى لو تغيّر المكوّن) */
+.chat-tray :where(.bubble,.msg,.message){
+  display: inline-block;
+  font-size: 14.5px;
+  line-height: 1.25;
+  padding: 6px 10px;
+  border-radius: 14px;
+  margin: 6px 8px;
+  color: #fff;
+  user-select: text;   /* للنسخ بالضغط المطوّل */
+  -webkit-user-select: text;
+  backdrop-filter: blur(0px);
+}
+.chat-tray :where(.bubble--in,.inbound){
+  background: rgba(0,0,0,0.28);   /* وارد: رمادي شفاف */
+  align-self: flex-start;
+}
+.chat-tray :where(.bubble--out,.outbound){
+  background: rgba(56,170,255,0.20);  /* صادر: سماوي شفاف */
+  align-self: flex-end;
+}
+
+/* حاوية رسائل مرنـة أسفل */
+.chat-tray .stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0 8px;
+}
+
+/* --- TOOLBAR slim tweaks (لا يتضخّم على الموبايل) --- */
+[data-toolbar-version] .is-icon {
+  height: 36px; width: 36px;
+}
+@media (min-width: 768px){
+  [data-toolbar-version] .is-icon {
+    height: 40px; width: 40px;
+  }
+}
+/* مساحة رأسية أقل للشريط */
+[data-toolbar-version] .tb-wrap {
+  padding-top: 4px;
+}
+
+/* --- legacy control shelf (hide on mobile) --- */
+@media (max-width: 767px){
+  .legacy-shelf{
+    display:none !important; height:0 !important;
+    padding:0 !important; margin:0 !important;
+  }
+}
+
+/* --- bottom message tray tuning --- */
+.chat-tray__log{ max-height: clamp(96px, 26vh, 200px); }
+
+/* ==== UI-DOCK v1 (transparent messages + composer vars) ==== */
+:root{
+  --safe-b: env(safe-area-inset-bottom);
+  --tb-h: 64px;          /* سيُحتسب ديناميكياً إن وُجد مقيس للـToolbar */
+  --composer-h: 0px;     /* 0 عند إغلاق الدرج */
+  --dock-max-h: 35dvh;   /* أقصى ارتفاع لعرض التاريخ */
+}
+
+.message-dock{
+  background: transparent;
+  max-height: var(--dock-max-h);
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+.msg-bubble{
+  /* فقاعة نصف شفافة مع blur خفيف */
+  border-radius: 16px;
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  background: rgba(15, 23, 42, 0.45); /* slate-900/45 */
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  max-width: 80%;
+  word-break: break-word;
+}
+
+.msg-me   { justify-content: flex-end; }
+.msg-peer { justify-content: flex-start; }
+/* ==== /UI-DOCK v1 ==== */
+
+
+/* ==== DitonaChat: bottom UI padding (v4-bottom) ==== */
+:root{
+  --safe-b: env(safe-area-inset-bottom);
+  --tb-h: 56px;          /* قيمة افتراضية، تُحدث من Toolbar */
+  --composer-h: 0px;     /* إن كان لديك Composer */
+}
+body{
+  /* تأكد أن المحتوى لا يختبئ خلف الشريط السفلي */
+  padding-bottom: calc(var(--tb-h) + var(--composer-h) + var(--safe-b));
+}
+
+
+/* === toolbar-smart === */
+:root{
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --kb-pad: 0px;       /* يُحدّث عند فتح/إغلاق الكيبورد */
+  --tb-h: 56px;        /* يُحدّث بـ ResizeObserver */
+  --composer-h: 0px;   /* ارتفاع صندوق الكتابة عندما يظهر */
+}
+
+/* وعاء الشريط: ثابت بأسفل الشاشة + فوق الكيبورد + داخل الـ safe-area */
+.toolbar-smart{
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(var(--kb-pad) + var(--safe-b));
+  z-index: 30;
+}
+
+/* زجاجي خفيف */
+.toolbar-glass{ @apply bg-black/40 backdrop-blur-md supports-[backdrop-filter]:bg-black/30; }
+
+/* تصغير تلقائي على الشاشات القصيرة */
+@media (max-height: 620px){
+  .toolbar-smart{ padding: .25rem .5rem; }
+  .toolbar-smart .icon-btn{ transform: scale(.9); }
+}
+
+/* حشوة سفلية للصفحة كي لا يتغطى المحتوى بالشريط/الكيبورد/الكاتب */
+.page-pad-bottom{
+  padding-bottom: calc(var(--tb-h) + var(--composer-h) + var(--kb-pad) + var(--safe-b));
+}

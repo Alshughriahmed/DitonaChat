@@ -1,0 +1,9 @@
+  - ditona_age_ok    => 307
+  - age_ok           => 307
+  - age_gate_ok      => 307
+  - terms_ok         => 307
+  - consent_ok       => 307
+  - ditona_consent   => 307
+  - ditona_gate      => 307
+  - over18           => 307
+  - adult_ok         => 307

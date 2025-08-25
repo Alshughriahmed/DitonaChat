@@ -1,0 +1,139 @@
+"use client";
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import Toolbar from "@/components/chat/Toolbar";
+import LowerRightQuick from "@/components/chat/LowerRightQuick";
+import ChatComposer from "@/components/chat/ChatComposer";
+import ChatMessages from "@/components/chat/ChatMessages";
+import PeerHeader from "@/components/chat/PeerHeader";
+import useSocketProbe from "@/hooks/useSocketProbe";
+
+type ChatMsg = { id: string; from: "me" | "peer"; text: string };
+
+export default function ChatPage() {
+  // ====== حالة الفلاتر التي نمررها للـ PeerHeader ======
+  const [countryPref, setCountryPref] = useState<string>("");
+  const [genderPref, setGenderPref]   = useState<string>("any"); // any|male|female|couple|lgbt
+
+  // ====== حالة اشتراك/VIP ولايكاتي (لأسفل يمين) ======
+  const [isVip, setIsVip] = useState<boolean>(false);
+  const [likesCount, setLikesCount] = useState<number>(0);
+
+  // ====== (المهم) لايك للـ peer يُستعمله Toolbar ======
+  const [peerLiked, setPeerLiked] = useState<boolean>(false);
+  const handleToggleLike = () => setPeerLiked(v => !v);
+
+  // ====== كام/مايك/جمال ======
+  const [micOn, setMicOn] = useState(true);
+  const [camOn, setCamOn] = useState(true);
+  const [beautyOn, setBeautyOn] = useState(false);
+  const handleToggleMic = () => setMicOn(v => !v);
+  const handleToggleCam = () => setCamOn(v => !v);
+  const handleSwitchCam = () => {/* لاحقًا: عكس الكاميرا */};
+  const handleBeauty    = () => setBeautyOn(v => !v);
+
+  // ====== رسائل ======
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    { id: "m1", from: "peer", text: "👋 Hi there" },
+  ]);
+  const handleSend = (t: string) => {
+    if (!t.trim()) return;
+    setMessages((m) => [...m, { id: crypto.randomUUID(), from: "me", text: t }]);
+  };
+
+  // ====== حفظ/استرجاع مبسّط للـ localStorage ======
+  useEffect(() => {
+    try {
+      const c0 = localStorage.getItem("countryPref");
+      const g0 = localStorage.getItem("genderPref");
+      const vip0 = localStorage.getItem("isVip");
+      const myLikes0 = localStorage.getItem("likesCount");
+      const peerLiked0 = localStorage.getItem("peerLiked");
+      if (c0) setCountryPref(c0);
+      if (g0) setGenderPref(g0);
+      if (vip0) setIsVip(vip0 === "1" || vip0 === "true");
+      if (myLikes0) setLikesCount(parseInt(myLikes0, 10) || 0);
+      if (peerLiked0) setPeerLiked(peerLiked0 === "1" || peerLiked0 === "true");
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("countryPref", countryPref || "");
+      localStorage.setItem("genderPref", genderPref || "any");
+      localStorage.setItem("isVip", isVip ? "1" : "0");
+      localStorage.setItem("likesCount", String(likesCount || 0));
+      localStorage.setItem("peerLiked", peerLiked ? "1" : "0");
+    } catch {}
+  }, [countryPref, genderPref, isVip, likesCount, peerLiked]);
+
+  // ====== سوكت (اختياري) ======
+  useSocketProbe(); // لن يتصل إلا إذا كان NEXT_PUBLIC_SOCKET_URL موجودًا
+
+  // ====== ريندر: شبكة 4 صفوف (أعلى نظير، مساحة، شريط الأدوات، المؤلف) ======
+  return (
+    <main
+      className="min-h-[100dvh] w-screen overflow-hidden text-white bg-gradient-to-b from-slate-900 via-slate-900 to-black"
+      style={{ touchAction: "pan-x" }}
+    >
+      <div className="grid grid-rows-[auto,1fr,auto,auto] h-[100dvh]">
+
+        {/* Row 1: ترويسة النظير (أعلى 50%) */}
+        <div className="relative">
+          <PeerHeader
+            className=""
+            info={{
+              name: "Guest",
+              likes: 123,
+              country: "",
+              city: "",
+              gender: genderPref,
+              isVip: true,
+            }}
+            filters={{ countryPref, genderPref }}
+            onFiltersChange={(f: {countryPref: string; genderPref: string}) => {
+              setCountryPref(f.countryPref);
+              setGenderPref(f.genderPref);
+            }}
+          />
+        </div>
+
+        {/* Row 2: المعاينة/المحتوى الأوسط (يُترك بسيطًا الآن) */}
+        <div className="relative">
+          {/* هنا لاحقًا: فيديو النظير/الخ */}
+          <ChatMessages items={messages} mode="latest" />
+        </div>
+
+        {/* Row 3: شريط الأدوات (أسفل، مع like للـ peer) */}
+        <div className="relative">
+          <Toolbar
+            onPrev={() => {}}
+            onNext={() => {}}
+            muted={!micOn}
+            camOn={camOn}
+            onToggleMic={handleToggleMic}
+            onToggleCam={handleToggleCam}
+            liked={peerLiked}
+            onToggleLike={handleToggleLike}
+            onSettings={() => { window.location.href = "/settings"; }}
+            onReport={() => { /* TODO: نافذة تبليغ */ }}
+          />
+        </div>
+
+        {/* Row 4: المؤلف/الكتابة (أسفل أسفل) */}
+        <div className="relative">
+          <ChatComposer open={true} onSend={handleSend} />
+          {/* إجراءات سريعة أعلى يمين أسفل الشاشة */}
+          <div className="absolute right-2 top-2">
+            <LowerRightQuick
+              onSwitchCam={handleSwitchCam}
+              onBeauty={handleBeauty}
+              beautyOn={beautyOn}
+              likesCount={likesCount}
+              isVip={isVip}
+            />
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

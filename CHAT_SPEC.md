@@ -1,0 +1,14 @@
+# CHAT_SPEC — Authoritative (MVP)
+- English UI (country/gender in English + emoji)
+- Layout: 50/50 — Peer | spacer | Toolbar | Composer
+- Gestures: ≥80px horizontal → Next/Prev; ≥50px vertical → latest/history (hard-coded in constants.ts)
+- Top-right: CountryPicker (All first + search + vertical scroll) + GenderFilter (All · Male ♂ blue · Female ♀ red · Couple 💑 pleasant · LGBT 🌈); show “All countries” until mount
+- Top-left: peer avatar/name/likes + VIP badge (solid if VIP)
+- Bottom-right: Switch Cam + Beauty + my VIP (CSS slash if not subscribed) + my likes total
+- Toolbar (R→L, overflow-x-auto): Next (bigger) | Toggle Cam | Toggle Mic | Like | Settings→/settings | Report | Prev (bigger)
+- Composer: above Toolbar; Send right, Emoji left
+- Messages: transparent; latest=3 & history=all; long-press → “Copied”
+- Gate (dev): open /api/age/allow once (sets ageok) → /chat
+- WebRTC (dev): STUN only; /api/turn ttl=300; TURN_* placeholders documented
+- Socket (client): import from @/utils/socket; provide named+default export (no connection logic in baseline)
+- Auth/DB/Stripe: documented only; ignore Stripe now

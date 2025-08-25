@@ -1,0 +1,149 @@
+import useSwipeNav from "@/hooks/useSwipeNav";
+"use client";
+import React, { useEffect, useRef, useState } from "react";
+import Toolbar from "@/components/chat/Toolbar";
+import ChatMessages, { type ChatMsg } from "@/components/chat/ChatMessages";
+import PeerHeader, { type PeerInfo } from "@/components/chat/PeerHeader";
+import LowerRightQuick from "@/components/chat/LowerRightQuick";
+import useSocketProbe from "@/hooks/useSocketProbe";
+
+export default function ChatPage() {
+  const [countryPref, setCountryPref] = useState<string>("");
+  const [genderPref, setGenderPref] = useState<string>("any");
+
+  const [isVip, setIsVip] = useState<boolean>(false);
+  const [likesCount, setLikesCount] = useState<number>(0);
+
+  const [peerLiked, setPeerLiked] = useState<boolean>(false);
+
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    { id: "m1", from: "peer", text: "👋 Hi there" },
+  ]);
+
+  const [peer, setPeer] = useState<PeerInfo>({
+    name: "Guest",
+    country: "Kuwait",
+    city: "Kuwait City",
+    gender: "♂",
+    likes: 123,
+    vip: true,
+  });
+
+  useEffect(() => {
+    try {
+      setIsVip((localStorage.getItem("isVip")||"0")==="1");
+      setLikesCount(Number(localStorage.getItem("likesCount")||"0"));
+      setCountryPref(localStorage.getItem("countryPref")||"");
+      setGenderPref(localStorage.getItem("genderPref")||"any");
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("isVip", isVip ? "1":"0");
+      localStorage.setItem("likesCount", String(likesCount));
+      localStorage.setItem("countryPref", countryPref||"");
+      localStorage.setItem("genderPref", genderPref||"any");
+    } catch {}
+  }, [isVip, likesCount, countryPref, genderPref]);
+
+  const handleToggleLike = () => {
+    setPeerLiked(v => {
+      const nv = !v;
+      setPeer(p => ({...p, likes: Math.max(0, (p.likes||0) + (nv?1:-1))}));
+      return nv;
+    });
+  };
+  const handlePrev = () => console.log("[prev]");
+  const handleNext = () => console.log("[next]");
+  const handleToggleMute = () => console.log("[mute]");
+  const handleToggleMic  = () => console.log("[mic]");
+  const handleToggleCam  = () => console.log("[cam]");
+  const handleReport     = () => console.log("[report]");
+  const handleSettings   = () => { location.href = "/settings"; };
+
+  // سحب أفقي للتالي/السابق (عتبة 80px)
+  const px = useRef<number|null>(null);
+  const onPD = (e: React.PointerEvent) => { px.current = e.clientX; };
+  const onPU = (e: React.PointerEvent) => {
+    if (px.current==null) return;
+    const dx = e.clientX - px.current;
+    px.current = null;
+    if (Math.abs(dx) < 80) return;
+    if (dx < 0) handleNext(); else handlePrev();
+  };
+
+  useSocketProbe();
+useSwipeNav({ onNext: handleNext, onPrev: handlePrev, threshold: 80 });
+
+  return (
+    <main
+      className="min-h-[100dvh] w-screen overflow-hidden text-white bg-gradient-to-b from-slate-900 via-slate-900 to-black"
+      style={{ touchAction: "pan-x" }}
+      onPointerDown={onPD}
+      onPointerUp={onPU}
+    >
+      <div className="grid grid-rows-[1fr_1fr_auto_auto] h-[100dvh]">
+        {/* صف 1: القسم العلوي (نظيرك) */}
+        <div className="relative">
+          <PeerHeader
+            info={peer}
+            filters={{ countryPref, genderPref }}
+            onFiltersChange={(f)=>{ setCountryPref(f.countryPref); setGenderPref(f.genderPref); }}
+          />
+        </div>
+
+        {/* صف 2: القسم السفلي (كاميرتك + شارات سريعة) */}
+        <div className="relative">
+          <div className="absolute right-2 top-2 z-30">
+            <LowerRightQuick
+              onSwitchCam={handleToggleCam}
+              onBeauty={()=>console.log("[beauty]")}
+              beautyOn={false}
+              likesCount={likesCount}
+              isVip={isVip}
+            />
+          </div>
+
+          {/* رسائل شفافة فوق الفيديو في القسم السفلي */}
+          <div className="absolute inset-x-3 bottom-[calc(var(--tb-h,48px)+56px)] z-20 pointer-events-none">
+            <ChatMessages items={messages} mode="latest" />
+          </div>
+        </div>
+
+        {/* صف 3: المؤلف (فوق شريط الأدوات مباشرة) */}
+        <div className="px-3 py-2">
+          <div className="rounded-2xl bg-black/30 backdrop-blur-md shadow p-2 flex items-center gap-2">
+            <button className="h-9 w-9 rounded-xl bg-white/10 grid place-items-center">😊</button>
+            <input
+              className="flex-1 bg-transparent outline-none placeholder:text-white/50"
+              placeholder="اكتب رسالة..."
+              onKeyDown={(e)=>{
+                if(e.key==="Enter"){
+                  const v=(e.target as HTMLInputElement).value.trim();
+                  if(v){ setMessages(m=>[...m,{id:crypto.randomUUID(),from:"me",text:v}]); (e.target as HTMLInputElement).value=""; }
+                }
+              }}
+            />
+            <button className="h-9 px-3 rounded-xl bg-white text-black font-semibold" onClick={()=>{
+              const el=document.querySelector<HTMLInputElement>("input[placeholder='اكتب رسالة...']");
+              if(!el) return;
+              const v=el.value.trim();
+              if(v){ setMessages(m=>[...m,{id:crypto.randomUUID(),from:"me",text:v}]); el.value=""; }
+            }}>Send</button>
+          </div>
+        </div>
+
+        {/* صف 4: شريط الأدوات (أسفل الشاشة) */}
+        <div className="px-3 pb-3">
+          <Toolbar
+            onPrev={handlePrev} onNext={handleNext}
+            muted={false} micOn={true} camOn={true}
+            onToggleMute={handleToggleMute} onToggleMic={handleToggleMic} onToggleCam={handleToggleCam}
+            liked={peerLiked} onToggleLike={handleToggleLike}
+            onReport={handleReport} onSettings={handleSettings}
+          />
+        </div>
+      </div>
+    </main>
+  );
+}

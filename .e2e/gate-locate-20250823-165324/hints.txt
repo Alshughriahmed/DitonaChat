@@ -1,0 +1,36 @@
+src/middleware.ts:4:export function middleware(req: NextRequest) {
+src/middleware.ts:9:    return NextResponse.redirect(new URL('/gate', url));
+src/app/page.tsx:4:export default function Index(){ redirect("/home"); }
+src/app/api/age/allow/route.ts:5:  const res = NextResponse.redirect(new URL('/chat', url));
+src/app/xchat/page.tsx:4:export const dynamic = 'force-dynamic';
+src/app/billing/test/page.tsx:4:export const dynamic = 'force-dynamic';
+src/app/vip/page.tsx:3:export const dynamic = 'force-dynamic';
+src/app/home/page.tsx:3:export const dynamic = 'force-static';
+src/app/home/layout.tsx:4:export const dynamic = "force-static";
+src/app/subscribe/success/page.tsx:1:export const dynamic = 'force-static';
+src/app/subscribe/cancel/page.tsx:1:export const dynamic = 'force-static';
+src/app/gate/page.tsx:2:export const dynamic = "force-static";
+src/app/gate/layout.tsx:3:export const dynamic = "force-static";
+src/app/api/webhooks/stripe/route.ts:2:export const dynamic = "force-dynamic";
+src/app/debug/status/route.ts:2:export const dynamic = 'force-dynamic';
+src/app/api/subscription/route.ts:2:export const dynamic = "force-dynamic";
+src/app/api/join/route.ts:1:export const dynamic = 'force-dynamic';
+src/app/api/subscription/debug/route.ts:6:export const dynamic = "force-dynamic";
+src/app/account/page.tsx:1:export const dynamic = 'force-dynamic'; // لا تُولّد ستاتيك أثناء build
+src/app/api/billing/portal/route.ts:2:export const dynamic = "force-dynamic";
+src/app/api/stripe/subscribe/route.ts:2:export const dynamic = "force-dynamic";
+src/app/api/stripe/prices/route.ts:1:export const runtime = 'nodejs';
+src/app/api/stripe/prices/route.ts:4:export const dynamic = 'force-dynamic';
+src/app/api/profile/route.ts:2:export const dynamic = "force-dynamic";
+src/app/api/stripe/portal/route.ts:2:export const dynamic = "force-dynamic";
+src/app/api/age/request/route.ts:3:export const dynamic = "force-dynamic";
+src/app/api/stripe/create-checkout-session/route.ts:2:export const dynamic = "force-dynamic";
+src/app/api/age/cookie/route.ts:2:export const dynamic = "force-dynamic";
+src/app/api/preferences/gender/route.ts:2:export const dynamic = "force-dynamic";
+src/app/api/age/confirm/route.ts:3:export const dynamic = "force-dynamic";
+src/app/api/me/route.ts:5:export const dynamic = "force-dynamic";
+src/app/api/age/allow/route.ts:2:export const dynamic = 'force-dynamic';
+src/app/api/match/status/route.ts:5:export const dynamic = "force-dynamic";
+src/app/api/match/ping/route.ts:2:export const dynamic = "force-dynamic";
+src/app/api/match/cancel/route.ts:6:export const dynamic = "force-dynamic";
+src/app/api/match/enqueue/route.ts:6:export const dynamic = "force-dynamic";

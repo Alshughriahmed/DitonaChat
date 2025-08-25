@@ -1,0 +1,26 @@
+import React from "react";
+
+type Props = { onSwitchCam: () => void; onBeauty: () => void; beautyOn?: boolean };
+
+export default function LowerRightQuick({ onSwitchCam, onBeauty, beautyOn = false }: Props) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        aria-label="Switch camera"
+        className="h-10 w-10 grid place-items-center rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm"
+        onClick={onSwitchCam}
+      >
+        🔄
+      </button>
+      <button
+        aria-label="Beauty"
+        className={`h-10 w-10 grid place-items-center rounded-full backdrop-blur-sm ${
+          beautyOn ? "bg-pink-500/60" : "bg-white/10 hover:bg-white/20"
+        }`}
+        onClick={onBeauty}
+      >
+        ✨
+      </button>
+    </div>
+  );
+}

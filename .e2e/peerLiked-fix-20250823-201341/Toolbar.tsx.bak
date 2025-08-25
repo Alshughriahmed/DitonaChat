@@ -1,0 +1,92 @@
+// @ts-nocheck
+'use client';
+import React from 'react';
+import Link from 'next/link';
+
+type Props = {
+  onPrev?: () => void;
+  onNext?: () => void;
+  mutedOutput?: boolean;
+  onToggleOutput?: () => void;
+  mutedMic?: boolean;
+  onToggleMic?: () => void;
+  liked?: boolean;
+  onToggleLike?: () => void;
+  onReport?: () => void;
+  className?: string;
+};
+
+function Btn({children, onClick, aria, big=false}: {children: React.ReactNode; onClick?:()=>void; aria:string; big?:boolean}) {
+  return (
+    <button
+      aria-label={aria}
+      onClick={onClick}
+      className={`${big ? "h-11 px-4 text-base" : "h-9 px-3 text-sm"} rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm inline-flex items-center gap-1`}>
+      {children}
+    </button>
+  );
+}
+
+/**
+ * الترتيب من اليمين لليسار:
+ * [Next (يمين)] [Mute Sound] [Mute Mic] [Like] [Settings] [Report] [Prev (يسار)]
+ */
+export default function Toolbar({
+  onPrev=()=>{}, onNext=()=>{},
+  mutedOutput=false, onToggleOutput=()=>{},
+  mutedMic=false, onToggleMic=()=>{},
+  liked=false, onToggleLike=()=>{},
+  onReport=()=>{},
+  className=""
+}: Props) {
+  return (
+    <div className={`w-full bg-black/30 backdrop-blur-md border-t border-white/10 ${className}`}>
+      <div className="flex items-center gap-2 px-2 py-2 w-full">
+        {/* أقصى اليسار = Prev */}
+        <div className="flex-1">
+          <div className="flex justify-start">
+            <Btn aria="Previous" onClick={onPrev} big>
+              <span aria-hidden>◀</span>
+              <span className="hidden sm:inline"> Prev</span>
+            </Btn>
+          </div>
+        </div>
+
+        {/* الوسط = بقية الأزرار */}
+        <div className="flex-0">
+          <div className="min-w-max flex items-center justify-center gap-2">
+            <Btn aria={mutedOutput? "Unmute sound":"Mute sound"} onClick={onToggleOutput}>
+              <span aria-hidden>{mutedOutput ? "🔇" : "🔊"}</span>
+              <span className="hidden sm:inline">{mutedOutput ? "Muted" : "Sound"}</span>
+            </Btn>
+            <Btn aria={mutedMic? "Unmute mic":"Mute mic"} onClick={onToggleMic}>
+              <span aria-hidden>{mutedMic ? "🎙️✖️" : "🎙️"}</span>
+              <span className="hidden sm:inline">{mutedMic ? "Mic off" : "Mic"}</span>
+            </Btn>
+            <Btn aria={liked? "Unlike":"Like"} onClick={onToggleLike}>
+              <span aria-hidden>{liked ? "❤️" : "🤍"}</span>
+              <span className="hidden sm:inline">{liked ? "Liked" : "Like"}</span>
+            </Btn>
+            <Link aria-label="Settings" href="/settings"
+              className="h-9 px-3 text-sm rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm inline-flex items-center gap-1">
+              <span aria-hidden>⚙️</span><span className="hidden sm:inline">Settings</span>
+            </Link>
+            <Btn aria="Report" onClick={onReport}>
+              <span aria-hidden>🚩</span><span className="hidden sm:inline">Report</span>
+            </Btn>
+          </div>
+        </div>
+
+        {/* أقصى اليمين = Next */}
+        <div className="flex-1">
+          <div className="flex justify-end">
+            <Btn aria="Next" onClick={onNext} big>
+              <span className="hidden sm:inline">Next</span>
+              <span aria-hidden> ▶</span>
+            </Btn>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

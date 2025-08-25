@@ -1,0 +1,65 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --tb-h: 64px;        /* افتراضي حتى يتم القياس */
+  --composer-h: 0px;   /* يُحدَّث من الكومبوزر */
+}
+
+/* إخفاء شريط التمرير مع بقاء اللمس يعمل */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* DitonaChat: lock WebRTC videos to their grid rows */
+.chat-grid > :nth-child(1),
+.chat-grid > :nth-child(2) { position: relative; min-height: 0; overflow: hidden; }
+
+.chat-grid > :nth-child(1) video,
+.chat-grid > :nth-child(2) video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* --- DitonaChat: keep bottom rows above, videos clipped & non-blocking --- */
+.chat-grid > :nth-child(3),
+.chat-grid > :nth-child(4) { position: relative; z-index: 30; }
+
+.chat-grid > :nth-child(1),
+.chat-grid > :nth-child(2) { position: relative; min-height: 0; overflow: hidden; }
+
+.chat-grid > :nth-child(1) video,
+.chat-grid > :nth-child(2) video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; pointer-events: none;
+}
+
+/* --- DitonaChat: keep bottom rows above, videos clipped & non-blocking --- */
+.chat-grid > :nth-child(3),
+.chat-grid > :nth-child(4) { position: relative; z-index: 20; }
+
+.chat-grid > :nth-child(1),
+.chat-grid > :nth-child(2) { position: relative; min-height: 0; overflow: hidden; }
+.chat-grid > :nth-child(1) video,
+.chat-grid > :nth-child(2) video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+
+/* keep bottom content clear of composer height */
+[data-grid="chat"]{ padding-bottom: calc(var(--composer-h, 0px) + 12px); }
+
+
+/* Chat tray tweaks */
+.chat-tray .scroll-area { overscroll-behavior: contain; }
+
+/* Thin scrollbar (Firefox) */
+.chat-tray .scroll-area { scrollbar-width: thin; }
+
+/* Thin scrollbar (WebKit) */
+.chat-tray .scroll-area::-webkit-scrollbar { height: 6px; width: 6px; }
+.chat-tray .scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.35); border-radius: 9999px; }
+.chat-tray .scroll-area::-webkit-scrollbar-track { background: transparent; }
+
+/* đảmّن تراكب الرسائل لا يحجب الفيديو */
+.chat-scroll{overscroll-behavior:contain;}
+
+/* beauty filters */
+.beauty-filters {
+  filter: brightness(1.05) saturate(1.1) contrast(1.03);
+}

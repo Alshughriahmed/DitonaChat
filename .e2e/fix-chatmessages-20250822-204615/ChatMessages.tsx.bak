@@ -1,0 +1,40 @@
+"use client";
+import React, { useRef } from "react";
+
+export type Msg = { id: string; from: "me"|"peer"; text: string; ts: number };
+
+type Props = {
+  items: Msg[];
+  mode: "latest" | "history";
+  onModeChange: (m:"latest"|"history")=>void;
+};
+
+export default function ChatMessages({ items, mode, onModeChange }: Props){
+  const startY = useRef(0);
+
+  const onTouchStart = (e: React.TouchEvent) => { startY.current = e.touches[0].clientY; };
+  const onTouchMove  = (e: React.TouchEvent) => {
+    const dy = startY.current - e.touches[0].clientY;
+    if (Math.abs(dy) > 50) onModeChange(dy > 0 ? "history" : "latest");
+  };
+
+  const list = mode === "latest" ? items.slice(-3) : items;
+
+  return (
+    <div
+      className="fixed left-0 right-0 z-10 message-dock px-3 pb-2"
+      style={{ bottom: `calc(var(--tb-h) + var(--composer-h) + var(--safe-b))` }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      aria-label="Recent messages"
+    >
+      <div className={`flex flex-col gap-2 ${mode==="latest" ? "pt-2" : ""}`}>
+        {list.map(m => (
+          <div key={m.id} className={`flex ${m.from==="me" ? "msg-me" : "msg-peer"}`}>
+            <span className="msg-bubble select-text">{m.text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

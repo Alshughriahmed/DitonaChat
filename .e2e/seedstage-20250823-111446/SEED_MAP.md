@@ -1,0 +1,91 @@
+# Project Map (مختصر)
+
+## Counts
+files(src): 181
+files(public): 9
+
+## Tree (depth 3)
+  - src/app/_guards/ClientRTCGuard.tsx
+  - src/app/account/page.tsx
+  - src/app/age/page.tsx
+  - src/app/api/checkout/route.ts
+  - src/app/api/create-checkout-session/route.ts
+  - src/app/api/health/route.ts
+  - src/app/api/join/route.ts
+  - src/app/api/me/route.ts
+  - src/app/api/profile/route.ts
+  - src/app/api/ratelimit-stats/route.ts
+  - src/app/api/relay-capture/route.ts
+  - src/app/api/rl/route.ts
+  - src/app/api/subscription/route.ts
+  - src/app/api/turn/route.ts
+  - src/app/auth/signin/page.tsx
+  - src/app/billing/cancel/page.tsx
+  - src/app/billing/success/page.tsx
+  - src/app/billing/test/page.tsx
+  - src/app/chat-sanity/page.tsx
+  - src/app/chat/[room]/page.tsx
+  - src/app/chat/SafelistSSR.tsx
+  - src/app/chat/ToolbarPlaceholder.tsx
+  - src/app/chat/head.tsx
+  - src/app/chat/layout.tsx
+  - src/app/chat/page.client.tsx
+  - src/app/chat/page.module.css
+  - src/app/chat/page.tsx
+  - src/app/chat/template.tsx
+  - src/app/components/Footer.tsx
+  - src/app/components/Header.tsx
+  - src/app/components/HeaderLite.tsx
+  - src/app/debug/status/route.ts
+  - src/app/debug/page.tsx
+  - src/app/gate/AgeGate.client.tsx
+  - src/app/gate/hide-legacy-header.css
+  - src/app/gate/layout.tsx
+  - src/app/gate/page.tsx
+  - src/app/home/GenderSelect.client.tsx
+  - src/app/home/StartGate.client.tsx
+  - src/app/home/layout.tsx
+  - src/app/home/page.tsx
+  - src/app/legal/privacy/page.tsx
+  - src/app/legal/terms/page.tsx
+  - src/app/login/page.tsx
+  - src/app/match-test/page.tsx
+  - src/app/match/debug/page.tsx
+  - src/app/privacy/page.tsx
+  - src/app/relay-probe/page.tsx
+  - src/app/rtc/socket-test/page.tsx
+  - src/app/settings/page.client.tsx
+  - src/app/settings/page.tsx
+  - src/app/share/page.tsx
+  - src/app/signup/page.tsx
+  - src/app/subscribe/cancel/page.tsx
+  - src/app/subscribe/success/page.tsx
+  - src/app/subscribe/page.tsx
+  - src/app/terms/page.tsx
+  - src/app/test-call/page.tsx
+  - src/app/vip/page.tsx
+  - src/app/webrtc-diag/page.tsx
+  - src/app/webrtc-perf-test/page.tsx
+  - src/app/webrtc-test/page.tsx
+  - src/app/xchat/page.client.tsx
+  - src/app/xchat/page.tsx
+  - src/app/ClientShell.tsx
+  - src/app/SafelistSSR.tsx
+  - src/app/favicon.ico
+  - src/app/globals.css
+  - src/app/head.tsx
+  - src/app/ice-injector.tsx
+  - src/app/layout.tsx
+  - src/app/page.module.css
+  - src/app/page.tsx
+  - src/app/providers.tsx
+
+## Key files
+  - src/app/chat/page.tsx
+  - src/components/chat/Toolbar.tsx
+  - src/components/chat/ChatMessages.tsx
+  - src/components/chat/ChatComposer.tsx
+  - src/components/chat/PeerHeader.tsx
+  - src/components/chat/LowerRightQuick.tsx (إن وُجد)
+  - src/middleware.ts (إن وُجد)
+  - tailwind.config.js / postcss.config.js / tsconfig.json / package.json

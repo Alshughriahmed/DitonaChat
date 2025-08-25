@@ -1,0 +1,3 @@
+<!doctype html><meta charset="utf-8"><title>Burst</title><pre id=p style="font:13px monospace;white-space:pre-wrap"></pre>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>const log=m=>p.textContent+=m+"\\n";const s=io();s.on("connect",()=>{log("connected "+s.id);let sent=0;for(let i=0;i<30;i++){try{s.emit("queue:next",{});}catch(e){}sent++;}log("burst sent="+sent);setTimeout(async()=>{try{const r=await fetch("/api/ratelimit-stats").then(r=>r.json());log("stats="+JSON.stringify(r));}catch(e){log("err "+e);} },1200);});</script>

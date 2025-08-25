@@ -1,0 +1,4 @@
+src/app/gate/AgeGate.client.tsx
+src/app/gate/hide-legacy-header.css
+src/app/gate/layout.tsx
+src/app/gate/page.tsx

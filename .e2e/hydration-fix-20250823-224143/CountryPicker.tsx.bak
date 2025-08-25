@@ -1,0 +1,78 @@
+"use client";
+import React, {useMemo, useState} from "react";
+
+type Props = { value?: string; onChange?: (code: string)=> void; className?: string };
+
+const FALLBACK_CODES = [
+  "US","GB","DE","FR","ES","IT","CA","BR","AR","MX","RU","TR","SA","EG","AE","MA","TN","JO","QA","KW","OM","IQ",
+  "IN","PK","BD","ID","TH","SG","JP","KR","CN","PH","VN","MY",
+  "AU","NZ","ZA","NG","KE","ET","GH",
+]; // يمكن توسيعها لاحقًا
+
+function safeSupportedRegions(): string[] {
+  try {
+    const fn = (Intl as any).supportedValuesOf;
+    if (typeof fn === "function") {
+      try { return fn.call(Intl, "region") as string[]; }
+      catch { /* بعض البيئات ترمي RangeError لمفتاح 'region' */ }
+    }
+  } catch {}
+  return FALLBACK_CODES;
+}
+
+export default function CountryPicker({ value, onChange, className }: Props) {
+  const [q, setQ] = useState("");
+  const codes = useMemo(() => safeSupportedRegions(), []);
+  const dn = useMemo(() => {
+    try { return new (Intl as any).DisplayNames(["en"], { type: "region" }); }
+    catch { return null; }
+  }, []);
+
+  const items = useMemo(() => {
+    const list = codes
+      .map(code => ({ code, name: dn?.of?.(code) || code }))
+      .filter(x => x.name) // تخلّص من القيَم غير الصالحة
+      .sort((a,b)=> a.name.localeCompare(b.name));
+    return [{ code: "", name: "All countries" }, ...list];
+  }, [codes, dn]);
+
+  const filter = (s: string) => s.toLowerCase().includes(q.trim().toLowerCase());
+
+  return (
+    <div className={className}>
+      <button
+        type="button"
+        className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur text-sm"
+        onClick={()=> {
+          const el = document.getElementById("country-dd");
+          el?.classList.toggle("hidden");
+          el?.focus();
+        }}
+        aria-haspopup="listbox"
+      >
+        🌍 {value ? (dn?.of?.(value) || value) : "All countries"}
+      </button>
+
+      <div id="country-dd" tabIndex={-1}
+           className="hidden absolute right-2 top-12 z-40 w-[min(92vw,520px)] max-h-[60vh] overflow-y-auto rounded-2xl bg-black/80 border border-white/10 p-2">
+        <input
+          value={q}
+          onChange={e=>setQ(e.target.value)}
+          placeholder="Search country…"
+          className="w-full mb-2 px-3 py-2 rounded-lg bg-white/10 outline-none"
+        />
+        <div className="grid grid-cols-2 gap-1">
+          {items.filter(it => filter(it.name) || filter(it.code)).map(it=>(
+            <button
+              key={it.code || "all"}
+              onClick={() => { onChange?.(it.code); document.getElementById("country-dd")?.classList.add("hidden"); }}
+              className={`text-left px-2 py-1 rounded hover:bg-white/10 ${value === it.code ? "bg-white/10" : ""}`}
+            >
+              {it.code ? `${it.name} (${it.code})` : "All countries"}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

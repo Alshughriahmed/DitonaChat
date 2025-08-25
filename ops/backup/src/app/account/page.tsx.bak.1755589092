@@ -1,0 +1,53 @@
+"use client";
+
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-no-store';
+import { makeSocket, type SocketT } from '@/utils/socket';
+import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+
+type Sub = { active: boolean; status: string|null; plan: string|null };
+
+export default async function AccountPage() {
+  const session = await getServerSession(authOptions);
+  let sub: Sub = { active: false, status: null, plan: null };
+  try {
+    const r = await fetch("/api/subscription/status", { cache: "no-store" });
+    if (r.ok) sub = await r.json();
+  } catch {}
+
+  return (
+    <main className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Account</h1>
+
+      {!session?.user ? (
+        <div className="space-y-3">
+          <p>أنت غير مسجّل الدخول.</p>
+          <a href="/api/auth/signin" className="px-4 py-2 rounded-2xl border shadow">تسجيل الدخول عبر Google</a>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="text-sm">
+            <div><b>User ID:</b> {(session.user as any).id ?? "-"}</div>
+            <div><b>Email:</b> {session.user.email ?? "-"}</div>
+          </div>
+
+          <div className="text-sm">
+            <div><b>Subscription active:</b> {String(sub.active)}</div>
+            <div><b>Status:</b> {sub.status ?? "-"}</div>
+            <div><b>Plan:</b> {sub.plan ?? "-"}</div>
+          </div>
+
+          <div className="flex gap-3 flex-wrap">
+            <Link href="/billing/test" className="px-4 py-2 rounded-2xl border shadow">شراء/ترقية (Test)</Link>
+            <form action="/api/stripe/portal" method="POST">
+              <button className="px-4 py-2 rounded-2xl border shadow" type="submit">بوابة الفوترة</button>
+            </form>
+            <a href="/api/auth/signout" className="px-4 py-2 rounded-2xl border shadow">تسجيل الخروج</a>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}

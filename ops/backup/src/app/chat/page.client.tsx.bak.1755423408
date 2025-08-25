@@ -1,0 +1,470 @@
+"use client";
+import { MockMatchService, demoProfiles } from "@/lib/match/mock";
+import PeerBadge, { type PeerProfile } from "@/components/PeerBadge";
+type MatchGender = 'any' | Gender;
+import React, {useEffect, useMemo, useRef, useState} from "react";
+
+
+
+import { guardVip } from '@/lib/vip';
+import { useVip } from '@/hooks/useVip';
+import UpsellModal from '@/components/UpsellModal';
+import type { RefObject } from "react";
+import { loadPrefs, savePrefs, isVip, type UserPrefs, type Gender } from "@/utils/prefs";
+
+/* ---------- مساعدات عامة ---------- */
+const GENDER_ICON: Record<Gender, {sym: string; color: string; label: string}> = {
+  female: { sym: "♀", color: "#FF3B30", label: "Female" },
+  male:   { sym: "♂", color: "#0A84FF", label: "Male" },
+  couple: { sym: "❤", color: "#FF3B30", label: "Couple" },
+  lgbtq:  { sym: "🏳️‍🌈", color: "#ffffff", label: "LGBTQ+" },
+};
+
+function flagEmoji(regionCode: string): string {
+  // ISO-3166-1 alpha-2 -> 🇺🇸
+  if (!regionCode || regionCode.length !== 2) return "🌐";
+  const A = 0x1F1E6;
+  const up = regionCode.toUpperCase();
+  const ch0 = up.codePointAt(0)! - 65 + A;
+  const ch1 = up.codePointAt(1)! - 65 + A;
+  return String.fromCodePoint(ch0, ch1);
+}
+function countryName(code: string, lang: string = 'en') {
+  try {
+    // يخرج الاسم بلغـة المتصفح
+    const dn = new (Intl as any).DisplayNames([lang || navigator.language], { type: "region" });
+    return dn.of(code) || code;
+  } catch { return code; }
+}
+function supportedRegions(): string[] {
+  try {
+    const anyIntl = Intl as any;
+    if (typeof anyIntl.supportedValuesOf === 'function') {
+      const all = anyIntl.supportedValuesOf('region') as string[];
+      if (Array.isArray(all) && all.length) {
+        // استبعد القيم غير الدول (مثل 001، 150...)
+        return all.filter(c => typeof c === 'string' && c.length === 2);
+      }
+    }
+  } catch {}
+  // Fallback واسع يغطي أغلب الدول الشائعة؛ لن ينهار الـ UI إن غاب supportedValuesOf
+  return [
+    'DE','US','GB','AE','SA','FR','ES','IT','TR','CA','BR','AU','CH','AT','NL','SE','NO','DK','FI','BE','PL','CZ','SK','HU','RO','BG','GR','PT','IE','IS','EE','LV','LT',
+    'RU','UA','BY','KZ','CN','JP','KR','HK','TW','SG','MY','TH','VN','PH','ID','IN','PK','BD','IR','IQ','SY','JO','LB','QA','KW','OM','BH','EG','MA','DZ','TN','LY','SD','KE',
+    'NG','GH','ET','TZ','UG','CM','SN','CI','ZA','NA','BW','ZW','MZ','AO','AR','CL','CO','MX','PE','UY','VE','EC','BO','PY','CU','DO','GT','HN','NI','CR','PA','PR','SV','JM',
+    'NZ'
+  ];
+}
+
+/* ---------- Emoji Picker بسيط ---------- */
+const EMOJIS = "😀 😁 😂 🤣 😊 😉 🙂 🙃 😍 🥰 😘 😜 🤪 🤩 🥳 🤗 🤔 🤓 😎 😏 😐 😴 😪 😭 😡 😇 🙏 👍 👎 👋 🤝 🤞 💪 👀 💋 ❤️ 🧡 💛 💚 💙 💜 🤍 🖤 💯 🔥 ✨ 🎉 🎊 🎁 🍻 🍷 ☕ 🍿 🍔 🍕 🍫 🍓 🍒 🍑 🌹 🌺 🌻 🌞 🌙 ⭐".split(/\s+/);
+
+/* ---------- أنواع داخلية ---------- */
+type Message = { id:string; kind: 'incoming' | 'outgoing'; text:string; ts:number };
+const mkMsg = (k: "incoming"|"outgoing", text: string) : Message => ({ id: Math.random().toString(36).slice(2), kind: k, text, ts: Date.now() });
+type RemoteMeta = {
+  id?: string;
+  
+  name?: string;
+  gender?: Gender;
+  country?: string;  // ISO-2 (DE)
+  city?: string;
+  likes?: number;
+  isVip?: boolean;
+  avatarUrl?: string;
+};
+
+/* ---------- مكوّن فرعي: بوابة VIP ---------- */
+function UpsellModal({open,onClose}:{open:boolean; onClose:()=>void}) {
+  if(!open) return null;
+  const plans = [
+    {label:"Daily",   price:"€1.49"},
+    {label:"Weekly",  price:"€5.99"},
+    {label:"Monthly", price:"€16.99"},
+    {label:"Yearly",  price:"€99.99"},
+  ];
+  useEffect(() => {
+    // inject intro message from peer on match
+    // يعتمد على remoteMeta.id كي لا تتكرر
+    // (إن لم تكن لديك حالة remoteMeta، فلن يحدث شيء)
+    // @ts-ignore
+    if (remoteMeta && remoteMeta.
+      // @ts-ignore
+      setMessages(prev => [ mkMsg("incoming", String(remoteMeta. ...prev ].slice(0,50));
+    }
+  }, [/* @ts-ignore */ remoteMeta && remoteMeta.id]);
+  return (
+    <div className="upgrade-backdrop" onClick={onClose}>
+      <div className="upgrade-card" onClick={e=>e.stopPropagation()}>
+        <h3>Go VIP to unlock this feature</h3>
+        <ul className="plans">
+          {plans.map(p=>(
+            <li key={p.label}><span>{p.label}</span><b>{p.price}</b></li>
+          ))}
+        </ul>
+        <div className="actions">
+          <a href="/subscribe" className="cta">Continue to Subscribe</a>
+          <button onClick={onClose} className="ghost">Later</button>
+        </div>
+      </div>
+      <style jsx>{`
+        .upgrade-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); display:grid; place-items:center; z-index:50}
+        .upgrade-card{ width:min(92vw,460px); background:#0f0f0f; color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:16px 16px 12px; box-shadow:0 10px 40px rgba(0,0,0,.55)}
+        .plans{ list-style:none; margin:12px 0; padding:0; display:grid; gap:8px}
+        .plans li{ display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.16); border-radius:10px; padding:10px 12px}
+        .cta{ background:#FF3B30; color:#fff; border:none; border-radius:10px; padding:10px 14px; text-decoration:none; font-weight:700}
+        .ghost{ background:transparent; color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:10px 14px}
+        .actions{ display:flex; gap:10px; justify-content:flex-end}
+        h3{ margin:0 0 6px; }
+      `}</style>
+    </div>
+  );
+}
+
+/* ---------- الصفحة الرئيسية للدردشة ---------- */
+export default function ChatUI(){
+  /* تفضيلات المستخدم */
+  const [userPrefs, setUserPrefs] = useState<UserPrefs>(loadPrefs());
+
+  
+  function toggleLike() {
+  setLikedMap((prev: Record<string, boolean>) => {
+    const next: Record<string, boolean> = { ...prev };
+    const id = currentPeerId;
+    if (!id) return prev;
+    const wasLiked = !!next[id];
+    if (wasLiked) {
+      delete next[id];
+      setDisplayLikes(n => Math.max(0, n - 1));
+    } else {
+      next[id] = true;
+      setDisplayLikes(n => n + 1);
+    }
+    try { localStorage.setItem("likes", JSON.stringify(next)); } catch {}
+    return next;
+  });
+}
+;
+    if(next[currentPeerId]){ delete next[currentPeerId]; setDisplayLikes(n=>Math.max(0,n-1)); }
+    else { next[currentPeerId]=true; setDisplayLikes(n=>n+1); }
+    try{ localStorage.setItem("likes", JSON.stringify(next)); }catch{}
+    return next;
+  });
+}
+  }
+  useEffect(()=>savePrefs(userPrefs),[userPrefs]);
+  const vipMe = isVip(userPrefs);
+
+  /* فيديوهات */
+  const remoteVideoRef = useRef<HTMLVideoElement|null>(null);
+  const localVideoRef  = useRef<HTMLVideoElement|null>(null);
+
+  /* حالات واجهة */
+  const [micMuted, setMicMuted] = useState(false);
+  const [showUpsell, setShowUpsell] = useState(false);
+  const { vip } = useVip();
+
+  const [spkMuted, setSpkMuted] = useState(false);
+  const [beautyOn, setBeautyOn] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([
+    { id:"m1", kind: 'incoming' as 'incoming', text:"Hi there 👋", ts: Date.now()-4000 },
+  ]);
+  // === mock match wiring ===
+  const match = React.useMemo(()=> new MockMatchService(demoProfiles), []);
+  const [peer, setPeer] = React.useState<PeerProfile>(demoProfiles[0]);
+  React.useEffect(()=>{
+    const off = match.onChange((p)=>{
+      setPeer(p);
+      if (p.
+        setMessages(prev => [
+          { id: Math.random().toString(36).slice(2), kind: 'incoming' as 'incoming', text: p. ts: Date.now() },
+          ...prev
+        ].slice(0,50));
+      }
+    });
+    return off;
+  },[match]);
+  // === end mock wiring ===
+  
+
+  /* بيانات الطرف */
+  const [remoteMeta, setRemoteMeta] = useState<RemoteMeta>({
+    name:"Anna", gender:"female", country:"DE", city:"Stuttgart", likes:142, isVip:true,
+  });
+
+  /* سحب ليمين/يسار => Prev/Next */
+  const touchRef = useRef<{x:number;y:number}|null>(null);
+  const onTouchStart = (e:React.TouchEvent)=>{ touchRef.current = {x:e.touches[0].clientX, y:e.touches[0].clientY}; };
+  const onTouchEnd = (e:React.TouchEvent)=>{
+    const st = touchRef.current; touchRef.current = null; if(!st) return;
+    const dx = e.changedTouches[0].clientX - st.x;
+    const dy = e.changedTouches[0].clientY - st.y;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) doNext(); else doPrev();
+    }
+  };
+
+  /* زر الإرسال و إدراج إيموجي */
+  const [draft, setDraft] = useState("");
+  function sendMessage(){
+    const text = draft.trim(); if(!text) return;
+    setMessages(prev => [{id:Math.random().toString(36).slice(2), kind: 'outgoing' as 'outgoing', text, ts:Date.now()}, ...prev].slice(0,50));
+    setDraft(""); setShowEmoji(false);
+  }
+  function insertEmoji(ch:string){ setDraft(d => (d + ch)); }
+
+  /* بوابة VIP داخل الدردشة */
+  function guardVip(doIt:()=>void){
+    if (vipMe) doIt(); else setShowUpgrade(true);
+  }
+
+  /* Prev/Next + حقن رسالة المقدّمة */
+  function injectIntroIfAny(){
+    const intro = (userPrefs.
+    if (intro && vipMe) {
+      setMessages(prev => [{id:Math.random().toString(36).slice(2), kind: 'outgoing' as 'outgoing', text:intro, ts:Date.now()}, ...prev].slice(0,50));
+    }
+  }
+  function doNext(){
+    injectIntroIfAny();
+    // TODO: ربط next الحقيقي (WebRTC)
+    // مؤقتًا: زد اللايكات لتبيان التغيير
+    
+  }
+  function doPrev(){ guardVip(()=> {
+    // TODO: prev الحقيقي
+  });}
+
+  /* تبديل الكاميرا */
+  async function handleSwapCamera(){ guardVip(()=> {
+    // TODO: switch deviceId / facingMode
+    console.log("swap camera (stub)");
+  });}
+
+  /* مفضّلات المطابقة (أعلى اليمين) */
+  const [openGenderSel, setOpenGenderSel] = useState(false);
+  const [openCountrySel, setOpenCountrySel] = useState(false);
+
+  const regions = useMemo(()=>supportedRegions(),[]);
+  const myRegion = useMemo(()=>{
+    try { return (new (Intl as any).Locale(navigator.language)).maximize().region || null; }
+    catch { return null; }
+  },[]);
+
+  function setPreferredGender(g: MatchGender){
+    if (g === 'any') setUserPrefs(p=>({...p, preferredGender:g}));
+    else guardVip(()=> setUserPrefs(p=>({...p, preferredGender:g})));
+  }
+  function setCountryFilterAll(){ setUserPrefs(p => ({ ...(p as any), countryFilter:'any' } as any)); }
+  function setCountryFilterMy(){ setUserPrefs(p => ({ ...(p as any), countryFilter:'my-country' } as any)); }
+  function toggleCountry(code:string){
+    guardVip(()=> {
+      setUserPrefs(p=>{
+        const cur = Array.isArray(p.countryFilter)? p.countryFilter.slice(): [];
+        const i = cur.indexOf(code);
+        if (i>=0) cur.splice(i,1); else cur.push(code);
+        return {...p, countryFilter: cur};
+      });
+    });
+  }
+
+  /* ربط الصوت الخارج */
+  useEffect(()=>{ if (remoteVideoRef.current) remoteVideoRef.current.muted = spkMuted; },[spkMuted]);
+
+  /* نافذة ترقية تظهر عند ضغط ميزات VIP */
+  const [showVipFromToolbar, setShowVipFromToolbar] = useState(false);
+
+  /* API اختبارية من الكونسول */
+  useEffect(()=>{ (window as any).debugSetRemote = (meta:Partial<RemoteMeta>) => setRemoteMeta(m=>({...m, ...meta})); },[]);
+
+  const genderChip = remoteMeta.gender ? GENDER_ICON[remoteMeta.gender] : null;
+  const countryChip = remoteMeta.country ? `${flagEmoji(remoteMeta.country)} ${countryName(remoteMeta.country, ((userPrefs as any) || 'en').language ?? 'en')}` : null;
+
+  return (
+    <main className="root" dir="ltr" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {/* القسم العلوي (فيديو الطرف) */}
+      <section className="section section-top">
+        <video ref={remoteVideoRef} className="video remote" playsInline autoPlay muted={spkMuted} />
+        <div className="overlay gradient-top" aria-hidden />
+
+        {/* شارة الطرف */}
+        const displayLikes = ((((remoteMeta as any)?.likes)||0) + (liked?1:0));
+<PeerBadge p={{
+    id: (remoteMeta?.name || 'peer'),
+    name: remoteMeta?.name,
+    gender: (remoteMeta?.gender ?? 'female'),
+    country: remoteMeta?.country,
+    city: remoteMeta?.city,
+    likes: (remoteMeta?.likes ?? 0),
+    isVip: remoteMeta?.isVip,
+    avatarUrl: remoteMeta?.avatarUrl,
+    
+  }} />
+
+        {/* سفلي/يسار: الجنس + البلد/المدينة */}
+        <div className="overlay peer-meta-bottom-left">
+          {genderChip && <span className="gender" style={{color: genderChip.color}}>{genderChip.sym}</span>}
+          <span className="place">{countryChip}{remoteMeta.city ? ` / ${remoteMeta.city}` : ""}</span>
+        </div>
+
+        {/* أعلى/يمين: مرشحات المطابقة */}
+        <div className="overlay top-right-controls">
+          <div className="menu">
+            <button className="chip" onClick={()=>setOpenGenderSel(s=>!s)} title="Preferred gender">⚤ {userPrefs.preferredGender ?? 'any'}</button>
+            {openGenderSel && (
+              <div className="popover">
+                {(['any','female','male','couple','lgbtq'] as MatchGender[]).map(g=>(
+                  <button key={g} className="pop-item" onClick={()=>{ setPreferredGender(g); setOpenGenderSel(false); }}>
+                    {g === 'any' ? 'All' : GENDER_ICON[g as Gender].label}
+                    {g!=='any' && !vipMe && <span className="vip-lock">VIP</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="menu">
+            <button className="chip" onClick={()=>setOpenCountrySel(s=>!s)} title="Country filter">🌎 Countries</button>
+            {openCountrySel && (
+              <div className="popover pop-wide">
+                <div className="pop-actions">
+                  <button onClick={()=>{setCountryFilterAll(); setOpenCountrySel(false);}}>All</button>
+                  <button onClick={()=>{setCountryFilterMy(); setOpenCountrySel(false);}}>
+                    My country {myRegion ? `(${flagEmoji(myRegion)})` : ""}
+                  </button>
+                </div>
+                <div className="grid">
+                  {regions.map(code=>{
+                    const active = Array.isArray((userPrefs as any).countryFilter) && (userPrefs as any).countryFilter.includes(code);
+                    return (
+                      <button key={code} className={"country "+(active?"active":"")} onClick={()=>toggleCountry(code)}>
+                        <span className="flag">{flagEmoji(code)}</span>
+                        <span className="name">{countryName(code, ((userPrefs as any) || 'en').language ?? 'en')}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {!vipMe && <div className="vip-hint">Selecting specific countries is VIP</div>}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* القسم السفلي (أنا) */}
+      <section className="section section-bottom">
+        <video ref={localVideoRef} className={"video local"+(beautyOn?" beauty":"")} playsInline autoPlay muted />
+        <div className="overlay self-top-right">
+          <button className="chip" onClick={handleSwapCamera}>⇄ Swap camera</button>
+          {isVip(userPrefs) && <span className="vip-chip">VIP</span>}
+        </div>
+
+        {/* شريط الرسائل */}
+        <div className="message-input">
+          <input
+            aria-label="Type a message"
+            placeholder="Type a message..."
+            value={draft}
+            onChange={(e)=>setDraft(e.target.value)}
+            onKeyDown={(e)=> e.key === 'Enter' && sendMessage()}
+          />
+          <button className="emoji" onClick={()=>setShowEmoji(v=>!v)} title="Emoji">🙂</button>
+          <button className="send" onClick={sendMessage} aria-label="Send">➤</button>
+        </div>
+        {showEmoji && (
+          <div className="emoji-panel">
+            {EMOJIS.map(e => <button key={e} onClick={()=>insertEmoji(e)}>{e}</button>)}
+          </div>
+        )}
+
+        {/* شريط الأدوات */}
+        <div className="toolbar" role="toolbar">
+          <button className="btn big left" onClick={()=> guardVip(()=>doPrev())}>⟨ Prev</button>
+          <div className="center-btns">
+            <button className="btn icon" onClick={()=>setSpkMuted(m=>!m)} title="Speaker">
+              {spkMuted ? "🔇" : "🔊"}
+            </button>
+            <button className="btn icon" onClick={()=>setMicMuted(m=>!m)} title="Microphone">
+              {micMuted ? "🎙️✖" : "🎙️"}
+            </button>
+            <button className={"btn icon"+(beautyOn?" active":"")} onClick={()=> guardVip(()=>setBeautyOn(v=>!v))} title="Beauty (VIP)">
+              ✨
+            </button>
+            <button className="btn icon" onClick={()=>location.assign('/settings')} title="Settings">⚙️</button>
+            <button className="btn icon stop" onClick={()=>console.log('stop/start match')} title="Stop/Play">⏯</button>
+      <button className={"btn icon like"+(liked?" active":"")} onClick={toggleLike} title="Like">❤</button>
+            <button className="btn icon" onClick={()=>alert('Reported. Thank you.')} title="Report">🚩</button>
+          </div>
+          <button className="btn big right" onClick={doNext}>Next ⟩</button>
+        </div>
+
+        {/* سكة الرسائل الجانبية */}
+        <div className="messages-rail" aria-live="polite">
+          <div className="rail-inner">
+            {messages.filter(m=>!!m.text && m.text.trim().length>0).map(m=>(
+              <div key={m.id} className={"bubble "+m.kind} title={new Date(m.ts).toLocaleTimeString()}>
+                {m.text}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* نافذة ترقية VIP */}
+      <UpsellModal open={showUpgrade || showVipFromToolbar} onClose={()=>{ setShowUpgrade(false); setShowVipFromToolbar(false); }} />
+
+      <style jsx>{`
+        :global(html,body){ background:#0b0b0b; }
+        .root{ height:100svh; display:flex; flex-direction:column; color:#fff; background:#0b0b0b; -webkit-tap-highlight-color:transparent; }
+        .section{ position:relative; width:100%; overflow:hidden; background:#000; }
+        .section-top{ height:65svh; min-height:65svh; }
+        .section-bottom{ flex:1; min-height:35svh; }
+        .video{ width:100%; height:100%; object-fit:cover; background:#111; }
+        .video.local{ transform:scaleX(-1); }
+        .video.local.beauty{ filter:saturate(1.05) contrast(1.05) brightness(1.02) blur(.3px); }
+        .overlay{ position:absolute; z-index:2; pointer-events:none; }
+        .gradient-top{ inset:0 0 auto 0; height:40%; background:linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0)); }
+        .peer-meta-bottom-left{ left:12px; bottom:12px; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:6px 10px; display:inline-flex; gap:8px; pointer-events:auto; backdrop-filter:blur(6px); }
+        .gender{ font-size:16px; font-weight:700; }
+        .place{ font-size:13px; opacity:.95; }
+        .top-right-controls{ top:10px; right:10px; display:flex; gap:8px; pointer-events:auto; }
+        .chip{ pointer-events:auto; display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:6px 10px; font-size:12px; color:#fff; }
+        .menu{ position:relative; }
+        .popover{ position:absolute; top:36px; right:0; background:#0f0f0f; border:1px solid rgba(255,255,255,.18); border-radius:10px; padding:8px; min-width:180px; z-index:5; }
+        .pop-wide{ width:min(92vw, 520px); }
+        .pop-item{ display:block; width:100%; text-align:left; color:#fff; background:transparent; border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:8px 10px; margin-bottom:6px; }
+        .vip-lock{ margin-left:8px; color:#FFD700; font-weight:700; }
+        .pop-actions{ display:flex; gap:8px; margin-bottom:8px; }
+        .grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px; max-height:38vh; overflow:auto; }
+        .country{ display:flex; align-items:center; gap:8px; padding:8px; border:1px solid rgba(255,255,255,.12); border-radius:8px; background:rgba(255,255,255,.05); }
+        .country.active{ outline:2px solid #FFD700; }
+        .flag{ width:20px; display:inline-block; }
+        .name{ font-size:13px; }
+        .vip-hint{ margin-top:8px; font-size:12px; opacity:.85; }
+        .self-top-right{ top:12px; right:12px; display:flex; align-items:center; gap:8px; pointer-events:auto; }
+        .vip-chip{ display:inline-flex; align-items:center; justify-content:center; padding:2px 6px; border-radius:6px; background:rgba(255,215,0,.15); color:#FFD700; font-weight:700; font-size:12px; border:1px solid rgba(255,215,0,.4); }
+        .message-input{ position:absolute; left:12px; right:12px; bottom:calc(64px + env(safe-area-inset-bottom,0)); display:flex; gap:8px; background:rgba(20,20,20,.85); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:8px 10px; z-index:3; pointer-events:auto; backdrop-filter:blur(6px); }
+        .message-input input{ flex:1; outline:none; background:transparent; border:none; color:#fff; font-size:14px; }
+        .message-input .emoji, .message-input .send{ background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:6px 10px; color:#fff; }
+        .emoji-panel{ position:absolute; left:12px; right:12px; bottom:calc(64px + env(safe-area-inset-bottom,0) + 54px); background:rgba(15,15,15,.95); border:1px solid rgba(255,255,255,.15); border-radius:12px; padding:8px; display:grid; grid-template-columns:repeat(10,1fr); gap:6px; z-index:4; max-height:40vh; overflow:auto; }
+        .emoji-panel button{ background:transparent; border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:6px 0; font-size:18px; }
+        .toolbar{ position:absolute; left:0; right:0; bottom:env(safe-area-inset-bottom,0); height:64px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:8px 10px; background:linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,.25)); z-index:2; backdrop-filter:blur(6px); }
+        .btn{ pointer-events:auto; color:#fff; }
+        .btn.big{ font-weight:800; font-size:16px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); border-radius:12px; padding:10px 14px; }
+        .btn.big.left{ justify-self:start; } .btn.big.right{ justify-self:end; }
+        .center-btns{ display:flex; gap:10px; justify-self:center; }
+        .btn.icon{ width:42px; height:42px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); display:grid; place-items:center; }
+        .btn.icon.like{ color:#FF3B30; } .btn.icon.stop{ color:#FF453A; } .btn.icon.active{ outline:2px solid rgba(255,255,255,.35); }
+        .messages-rail{ position:absolute; left:12px; top:-20svh; bottom:90px; width:min(80%, 420px); pointer-events:auto; display:flex; align-items:flex-start; }
+        .rail-inner{ display:flex; flex-direction:column; gap:6px; overflow-y:auto; padding-right:8px; align-self:flex-end; max-height:calc(65svh + 35svh - 120px); scrollbar-width:thin; }
+        .bubble{ max-width:100%; font-size:13px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.08); backdrop-filter:blur(6px); user-select:text; }
+        .bubble.incoming{ background:rgba(255,255,255,.12); }
+        .bubble.outgoing{ background:rgba(52,199,89,.20); border-color:rgba(52,199,89,.35); }
+        @media (min-width:768px){ .section-top{ height:65vh; min-height:65vh } .section-bottom{ min-height:35vh } .messages-rail{ width:min(60%,520px) } .btn.big{ font-size:18px } }
+      `}</style>
+      <UpsellModal open={showUpsell} onClose={()=>setShowUpsell(false)} />
+    </main>
+  );
+}

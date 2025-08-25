@@ -1,0 +1,6 @@
+_ops/
+ops/
+*.log
+*.tgz
+*.zip
+.DS_Store

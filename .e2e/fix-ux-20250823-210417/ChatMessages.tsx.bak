@@ -1,0 +1,56 @@
+// @ts-nocheck
+"use client";
+import React, { useMemo, useRef, useState } from "react";
+
+export type ChatMsg = { id?: string; text: string; me?: boolean; ts?: number };
+
+export default function ChatMessages({
+  items,
+  mode = "latest",
+}: { items: ChatMsg[]; mode?: "latest" | "history" }) {
+  const list = useMemo(() => (mode === "latest" ? items.slice(-3) : items), [items, mode]);
+
+  // Copy toast state
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<number | null>(null);
+  const showCopied = () => {
+    setCopied(true);
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => setCopied(false), 1200);
+  };
+
+  // Long-press handlers (≈500ms)
+  const longPressHandlers = (text: string) => {
+    let t: number | null = null;
+    const start = () => {
+      if (t) window.clearTimeout(t);
+      t = window.setTimeout(async () => {
+        try { await navigator.clipboard.writeText(text); showCopied(); } catch {}
+      }, 500);
+    };
+    const clear = () => { if (t) { window.clearTimeout(t); t = null; } };
+    return { onPointerDown: start, onPointerUp: clear, onPointerLeave: clear, onPointerCancel: clear };
+  };
+
+  return (
+    <>
+      <div className={`flex flex-col gap-2 ${mode === "latest" ? "pt-2" : ""}`}>
+        {list.map((m, i) => (
+          <div
+            key={m.id ?? i}
+            className="rounded-2xl px-3 py-2 max-w-[80%] bg-black/40 text-white backdrop-blur-sm select-text"
+            {...longPressHandlers(m.text)}
+          >
+            {m.text}
+          </div>
+        ))}
+      </div>
+
+      {copied && (
+        <div className="fixed inset-x-0 bottom-[calc(var(--tb-h,44px)+var(--composer-h,0px)+24px)] z-50 grid place-items-center pointer-events-none">
+          <div className="pointer-events-auto px-3 py-1 rounded-full text-xs bg-black/70 border border-white/10">Copied</div>
+        </div>
+      )}
+    </>
+  );
+}

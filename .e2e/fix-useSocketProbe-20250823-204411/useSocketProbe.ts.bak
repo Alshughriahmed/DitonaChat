@@ -1,0 +1,36 @@
+"use client";
+import { useEffect } from "react";
+import { getSocket } from "@/utils/socket";
+
+export function useSocketProbe() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = process.env.NEXT_PUBLIC_SOCKET_URL || "";
+    if (!url) return; // skip when not configured
+
+    const s = getSocket();
+    const onConnect = () => console.debug("[sock] connected", s.id);
+    const onDisconnect = (r: any) => console.debug("[sock] disconnected", r);
+    const onReconn = (att: any) => console.debug("[sock] reconnect_attempt", att);
+    const onFail = () => console.warn("[sock] reconnect_failed");
+
+    s.on("connect", onConnect);
+    s.on("disconnect", onDisconnect);
+    s.io.on("reconnect_attempt", onReconn);
+    s.io.on("reconnect_failed", onFail);
+
+    // initial hello (optional)
+    try { s.emit("client:hello", { t: Date.now() }); } catch {}
+
+    return () => {
+      try {
+        s.off("connect", onConnect);
+        s.off("disconnect", onDisconnect);
+        // @ts-ignore
+        s.io?.off?.("reconnect_attempt", onReconn);
+        // @ts-ignore
+        s.io?.off?.("reconnect_failed", onFail);
+      } catch {}
+    };
+  }, []);
+}

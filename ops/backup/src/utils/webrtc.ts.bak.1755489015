@@ -1,0 +1,143 @@
+'use client';
+
+/**
+ * WebRTC client with dynamic ICE fetching from /api/turn (Twilio-backed).
+ * - Caches ICE client-side using server-provided TTL (or 60s fallback).
+ * - Falls back to public STUN if /api/turn fails or keys missing.
+ * - Minimal, API-compatible class: WebRTCManager (initPeer, attachLocal, createOffer, acceptAnswer, addRemoteCandidate, teardown).
+ */
+
+export interface TurnResponse {
+  ok: boolean;
+  iceServers: RTCIceServer[];
+  ttl?: number;
+  mode?: 'twilio' | 'stun-only';
+  cached?: boolean;
+}
+
+type OnStream = (stream: MediaStream | null) => void;
+type OnIce = (candidate: RTCIceCandidateInit) => void;
+
+let __iceCache: { expiresAt: number; ice: RTCIceServer[] } | null = null;
+
+function stunFallback(): RTCIceServer[] {
+  return [
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ];
+}
+
+async function getIceServers(): Promise<RTCIceServer[]> {
+  const now = Date.now();
+  if (__iceCache && __iceCache.expiresAt > now) return __iceCache.ice;
+
+  try {
+    const res = await fetch('/api/turn', { cache: 'no-store' });
+    const j = (await res.json()) as TurnResponse;
+    const ice = (j?.ok && Array.isArray(j.iceServers) && j.iceServers.length > 0) ? j.iceServers : stunFallback();
+    const ttl = Math.max(30, Number(j?.ttl ?? 60));
+    __iceCache = { ice, expiresAt: now + ttl * 1000 };
+    return ice;
+  } catch {
+    return stunFallback();
+  }
+}
+
+export class WebRTCManager {
+  private pc: RTCPeerConnection | null = null;
+  private local: MediaStream | null = null;
+  private remote: MediaStream | null = null;
+
+  /** Returns current local MediaStream (if attached). */
+  getLocalStream() { return this.local; }
+  /** Returns current remote MediaStream (if received). */
+  getRemoteStream() { return this.remote; }
+
+  /**
+   * Initialize RTCPeerConnection and wire listeners.
+   * Must be awaited to load ICE from /api/turn.
+   */
+  async initPeer(onTrack: OnStream, onIce: OnIce): Promise<RTCPeerConnection> {
+    const iceServers = await getIceServers();
+    this.pc = new RTCPeerConnection({ iceServers });
+
+    this.pc.onicecandidate = (e) => { if (e.candidate) onIce(e.candidate.toJSON()); };
+    this.pc.ontrack = (e) => {
+      if (!this.remote) this.remote = new MediaStream();
+      // attach all tracks from this event
+      for (const t of e.streams?.[0]?.getTracks?.() ?? []) {
+        try { this.remote.addTrack(t); } catch {}
+      }
+      // also ensure event track is added
+      try { this.remote.addTrack(e.track); } catch {}
+      onTrack(this.remote);
+    };
+    this.pc.onconnectionstatechange = () => {
+      const s = this.pc?.connectionState;
+      // Auto-clean on terminal states
+      if (s && (s === 'failed' || s === 'closed')) {
+        this.teardown();
+      }
+    };
+
+    return this.pc;
+  }
+
+  /**
+   * Attach local media (default 640x480, audio+video) and add tracks.
+   */
+  async attachLocal(constraints: MediaStreamConstraints = { audio: true, video: { width: 640, height: 480 } }) {
+    this.local = await navigator.mediaDevices.getUserMedia(constraints);
+    if (!this.pc) throw new Error('Peer not initialized');
+    for (const t of this.local.getTracks()) {
+      this.pc.addTrack(t, this.local);
+    }
+    return this.local;
+  }
+
+  /**
+   * Create an SDP offer and set it as local description.
+   */
+  async createOffer(): Promise<RTCSessionDescriptionInit> {
+    if (!this.pc) throw new Error('Peer not initialized');
+    const offer = await this.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+    await this.pc.setLocalDescription(offer);
+    return offer;
+  }
+
+  /**
+   * Accept remote SDP answer.
+   */
+  async acceptAnswer(answer: RTCSessionDescriptionInit) {
+    if (!this.pc) throw new Error('Peer not initialized');
+    await this.pc.setRemoteDescription(new RTCSessionDescription(answer));
+  }
+
+  /**
+   * Add a remote ICE candidate.
+   */
+  async addRemoteCandidate(cand: RTCIceCandidateInit) {
+    if (!this.pc) throw new Error('Peer not initialized');
+    try {
+      await this.pc.addIceCandidate(new RTCIceCandidate(cand));
+    } catch (e) {
+      console.warn('[WebRTC] addIceCandidate failed:', e);
+    }
+  }
+
+  /**
+   * Stop tracks and close the peer connection.
+   */
+  teardown() {
+    try { this.pc?.getSenders?.().forEach(s => s.track && s.track.stop()); } catch {}
+    try { this.local?.getTracks().forEach(t => t.stop()); } catch {}
+    try { this.remote?.getTracks().forEach(t => t.stop()); } catch {}
+
+    try { this.pc?.close(); } catch {}
+    this.pc = null;
+    this.local = null;
+    this.remote = null;
+  }
+}
+
+export default WebRTCManager;

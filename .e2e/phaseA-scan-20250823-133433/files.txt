@@ -1,0 +1,5 @@
+[HIT] src/lib/auth.ts
+[HIT] src/lib/authOptions.ts
+[HIT] src/lib/stripe.ts
+[HIT] src/lib/stripeClient.ts
+[HIT] src/lib/stripeConfig.ts

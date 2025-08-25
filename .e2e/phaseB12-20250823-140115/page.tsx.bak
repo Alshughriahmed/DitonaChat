@@ -1,0 +1,110 @@
+"use client";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import Toolbar from "@/components/chat/Toolbar";
+import LowerRightQuick from "@/components/chat/LowerRightQuick";
+import ChatComposer from "@/components/chat/ChatComposer";
+import ChatMessages from "@/components/chat/ChatMessages";
+
+type ChatMsg = { id: string; from: "me" | "peer"; text: string; at?: number };
+
+const SWIPE_THRESHOLD = 80; // px
+const AUTO_DIM_MS = 5000;
+
+export default function ChatPage() {
+  // demo state for messages
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    { id: "m1", from: "peer", text: "👋 Hi there" },
+    { id: "m2", from: "me", text: "Hello!" },
+  ]);
+  const addMessage = useCallback((t: string) => {
+    setMessages((xs) => [...xs, { id: String(Date.now()), from: "me", text: t }]);
+  }, []);
+
+  // Beauty toggle
+  const [beautyOn, setBeautyOn] = useState(false);
+  const handleBeauty = useCallback(() => setBeautyOn((v) => !v), []);
+  const handleSwitchCam = useCallback(() => {
+    // TODO: integrate actual camera track switching
+    // console.log("Switch camera");
+  }, []);
+
+  // swipe prev/next — horizontal 80px
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const swiping = useRef(false);
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    swiping.current = true;
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+  }, []);
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!swiping.current) return;
+    const dx = e.clientX - startX.current;
+    const dy = e.clientY - startY.current;
+    if (Math.abs(dx) >= SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 0) handlePrev();
+      else handleNext();
+      swiping.current = false;
+    }
+  }, []);
+  const onPointerUp = useCallback(() => { swiping.current = false; }, []);
+  const handlePrev = useCallback(() => {}, []);
+  const handleNext = useCallback(() => {}, []);
+
+  // auto-dim after 5s idle; restore on interaction
+  const [idle, setIdle] = useState(false);
+  const idleTimer = useRef<number | null>(null);
+  const bump = useCallback(() => {
+    setIdle(false);
+    if (idleTimer.current) window.clearTimeout(idleTimer.current);
+    // @ts-ignore
+    idleTimer.current = window.setTimeout(() => setIdle(true), AUTO_DIM_MS);
+  }, []);
+  useEffect(() => {
+    bump();
+    const reset = () => bump();
+    const events = ["pointerdown", "mousemove", "keydown", "touchstart"];
+    events.forEach((n) => window.addEventListener(n, reset, { passive: true }));
+    return () => events.forEach((n) => window.removeEventListener(n, reset));
+  }, [bump]);
+
+  return (
+    <main className="min-h-[100dvh] w-screen overflow-hidden text-white bg-gradient-to-b from-slate-900 via-slate-900 to-black">
+      {/* Grid: 2 video rows + toolbar + composer */}
+      <div
+        className="grid grid-rows-[1fr_1fr_auto_auto] h-[100dvh] chat-safe-pad"
+        style={{ touchAction: "pan-x" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+      >
+        {/* Row 1: video area A */}
+        <div className="relative">
+          <div className={beautyOn ? "beauty-filters h-full w-full" : "h-full w-full"}>
+            {/* TODO: <video> elements go here */}
+          </div>
+        </div>
+
+        {/* Row 2: video area B + overlayed message dock + quick actions in upper-right */}
+        <div className="relative">
+          <div className={`absolute inset-x-2 bottom-2 transition-opacity ${idle ? "opacity-70" : "opacity-100"}`}>
+            <ChatMessages items={messages} mode="latest" />
+          </div>
+          <div className="absolute right-2 top-2">
+            <LowerRightQuick onSwitchCam={handleSwitchCam} onBeauty={handleBeauty} beautyOn={beautyOn} />
+          </div>
+        </div>
+
+        {/* Row 3: Toolbar (always visible) */}
+        <div className={`transition-opacity ${idle ? "opacity-70" : "opacity-100"}`}>
+          <Toolbar onPrev={handlePrev} onNext={handleNext} />
+        </div>
+
+        {/* Row 4: Composer */}
+        <div>
+          <ChatComposer onSend={addMessage} />
+        </div>
+      </div>
+    </main>
+  );
+}

@@ -1,0 +1,5 @@
+/chat                          -> 307
+/settings                      -> 200
+/api/subscription/status       -> 200
+/api/turn                      -> 200
+/api/stripe/prices             -> 500

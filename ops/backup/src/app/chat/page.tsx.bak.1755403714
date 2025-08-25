@@ -1,0 +1,240 @@
+"use client";
+
+import { makeSocket, type SocketT } from '@/utils/socket';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSession } from 'next-auth/react';
+
+// ====== Types (typing فقط بدون تغيير منطق) ======
+
+type SignalOfferPayload     = { roomId: string; desc: RTCSessionDescriptionInit };
+type SignalAnswerPayload    = { roomId: string; desc: RTCSessionDescriptionInit };
+type SignalCandidatePayload = { roomId?: string; candidate: RTCIceCandidateInit };
+type RoomClosedPayload      = { reason: string };
+type QueueErrorPayload      = { message: string; remainingMs?: number };
+
+// ====== TURN helpers ======
+function getIceServers(): RTCIceServer[] {
+  const turnUrl  = process.env.NEXT_PUBLIC_TURN_URL;
+  const turnUser = process.env.NEXT_PUBLIC_TURN_USERNAME;
+  const turnCred = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
+  const servers: RTCIceServer[] = [
+    { urls: ['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302'] }];
+  if (turnUrl && turnUser && turnCred) {
+    servers.push({ urls: [turnUrl], username: turnUser, credential: turnCred });
+  }
+  return servers;
+}
+
+export default function ChatPage() {
+  // ====== Refs & State ======
+  const localVideoRef  = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const pcRef          = useRef<RTCPeerConnection | null>(null);
+  const socketRef      = useRef<SocketT | null>(null);
+  const streamRef      = useRef<MediaStream | null>(null);
+
+  const [isMatched, setIsMatched] = useState(false);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [status, setStatus] = useState<'idle'|'ready'|'calling'|'in-call'|'error'>('idle');
+  const [log, setLog] = useState<string[]>([]);
+  const push = (s: string) => setLog(L => [...L.slice(-300), `${new Date().toISOString()} ${s}`]);
+
+  const baseUrl = useMemo(
+    () => (typeof window !== 'undefined' && window.location.origin) || '',
+  []);
+
+  // ====== PeerConnection ======
+  const createPeerConnection = () => {
+    const pc = new RTCPeerConnection({ iceServers: getIceServers() });
+
+    pc.oniceconnectionstatechange = () => push('iceConnectionState=' + pc.iceConnectionState);
+    pc.onconnectionstatechange   = () => push('connectionState=' + pc.connectionState);
+    pc.onicegatheringstatechange = () => push('iceGathering=' + pc.iceGatheringState);
+
+    pc.ontrack = (e) => {
+      push('ontrack streams=' + e.streams.length);
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = e.streams[0];
+        // play بدون انتظار يمنع أخطاء autoplay
+        remoteVideoRef.current.play().catch(()=>{});
+      }
+      setStatus('in-call');
+    };
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate) {
+        push('local candidate ' + (e.candidate.type || ''));
+        socketRef.current?.emit('signal:candidate', { roomId, candidate: e.candidate });
+      } else {
+        push('ice candidate gathering complete');
+      }
+    };
+
+    return pc;
+  };
+
+  // ====== Media ======
+  const startLocalMedia = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+      audio: true});
+    streamRef.current = stream;
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
+      localVideoRef.current.muted = true;
+      await localVideoRef.current.play().catch(()=>{});
+    }
+    return stream;
+  };
+
+  // ====== Socket setup ======
+  useEffect(() => {
+    const s = makeSocket(baseUrl, {
+        path: '/socket.io',
+        transports: ['websocket', 'polling'],
+        upgrade: true});
+    socketRef.current = s;
+
+    s.on('connect', () => {
+      push('[SOCKET] connected ' + s.id);
+      setStatus('ready');
+    });
+
+    s.on('disconnect', (reason: string) => {
+      push('[SOCKET] disconnected: ' + reason);
+      setIsMatched(false);
+      setRoomId(null);
+      setStatus('idle');
+    });
+
+    // إشارات WebRTC
+    s.on('signal:offer', async ({ roomId, desc }: SignalOfferPayload) => {
+      push('[SIGNAL] recv offer');
+      if (!pcRef.current) pcRef.current = createPeerConnection();
+      const pc = pcRef.current!;
+      await pc.setRemoteDescription(new RTCSessionDescription(desc));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      s.emit('signal:answer', { roomId, desc: answer });
+      push('[SIGNAL] sent answer');
+    });
+
+    s.on('signal:answer', async ({ roomId, desc }: SignalAnswerPayload) => {
+      push('[SIGNAL] recv answer');
+      if (!pcRef.current) return;
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(desc));
+      setStatus('in-call');
+    });
+
+    s.on('signal:candidate', async ({ candidate }: SignalCandidatePayload) => {
+      if (!candidate) return;
+      if (!pcRef.current) return;
+      try {
+        await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        push('[SIGNAL] recv candidate');
+      } catch (e: any) {
+        push('[SIGNAL] candidate error ' + (e?.message || e));
+      }
+    });
+
+    // غرفة/طابور
+    s.on('room:ready', (payload: { roomId: string }) => {
+      setRoomId(payload.roomId);
+      setIsMatched(true);
+      push('[ROOM] ready ' + payload.roomId);
+    });
+
+    s.on('room:closed', ({ reason }: RoomClosedPayload) => {
+      push('[ROOM] closed: ' + reason);
+      setIsMatched(false);
+      setRoomId(null);
+      setStatus('ready');
+    });
+
+    s.on('queue:error', (error: QueueErrorPayload) => {
+      push('[QUEUE] error: ' + error.message + (error.remainingMs ? ' remaining=' + error.remainingMs : ''));
+    });
+
+    return () => {
+      s.removeAllListeners();
+      s.disconnect();
+      socketRef.current = null;
+    };
+  }, [baseUrl]);
+
+  // ====== Actions ======
+  const handleStart = async () => {
+    try {
+      push('[UI] start clicked');
+      const stream = await startLocalMedia();
+      if (!pcRef.current) pcRef.current = createPeerConnection();
+      const pc = pcRef.current!;
+
+      // استلام مسارات الطرف الآخر
+      pc.addTransceiver('video', { direction: 'recvonly' });
+      pc.addTransceiver('audio', { direction: 'recvonly' });
+      // إرسال مساراتنا
+      stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+      // انضمام للطابور/الغرفة
+      socketRef.current?.emit('room:join', {}, (ack?: { roomId?: string }) => {
+        if (ack?.roomId) {
+          setRoomId(ack.roomId);
+          push('[ROOM] joined ' + ack.roomId);
+        }
+      });
+
+      // المبدئ: لو صرنا المتصل الأول، أنشئ عرضًا
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socketRef.current?.emit('signal:offer', { roomId, desc: offer });
+      setStatus('calling');
+      push('[SIGNAL] sent offer');
+    } catch (e: any) {
+      setStatus('error');
+      push('[UI] init error ' + (e?.message || e));
+      alert('Camera/Mic blocked. افتح الصفحة في تبويب خارجي واسمح بالأذونات، ثم أعد المحاولة.');
+    }
+  };
+
+  const handleHangup = () => {
+    try {
+      pcRef.current?.getSenders().forEach(s => { try { s.track?.stop(); } catch {} });
+      pcRef.current?.close();
+      pcRef.current = null;
+      streamRef.current?.getTracks().forEach(t => { try { t.stop(); } catch {} });
+      streamRef.current = null;
+      setStatus('ready');
+      socketRef.current?.emit('room:leave', { roomId });
+      push('[UI] hangup');
+    } catch {}
+  };
+
+  return (
+    <div className="relative w-full min-h-screen bg-gray-900 text-white flex flex-col items-center justify-start p-4 overflow-hidden">
+      <h1 className="text-3xl font-bold mb-4">DitonaChat</h1>
+
+      <div className="relative w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <h3 className="font-semibold mb-2">Local</h3>
+          <video ref={localVideoRef} playsInline muted className="w-full bg-black rounded-xl" />
+          <div className="mt-3 flex gap-2">
+            <button onClick={handleStart} className="px-4 py-2 bg-emerald-600 rounded">Start & Join</button>
+            <button onClick={handleHangup} className="px-4 py-2 bg-red-600 rounded">Hang up</button>
+          </div>
+        </div>
+        <div>
+          <h3 className="font-semibold mb-2">Remote</h3>
+          <video ref={remoteVideoRef} playsInline className="w-full bg-black rounded-xl" />
+        </div>
+      </div>
+
+      <div className="mt-4 w-full max-w-5xl">
+        <div className="mb-1">Status: {status} {roomId ? `(room=${roomId})` : ''}</div>
+        <pre className="max-h-64 overflow-auto bg-black/80 text-emerald-300 p-3 rounded-lg text-xs">
+{log.join('\n')}
+        </pre>
+      </div>
+    </div>
+  );
+}

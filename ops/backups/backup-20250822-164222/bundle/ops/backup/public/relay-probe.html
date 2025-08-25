@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Relay Probe</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <style>
+      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; background:#0b0b0b; color:#fff; padding:16px}
+      code{background:#1e1e1e; padding:2px 6px; border-radius:6px}
+      .ok{color:#29d;}.err{color:#f55;}
+    </style>
+  </head>
+  <body>
+    <h1>Socket / TURN Probe</h1>
+    <p>1) This page attempts Socket.IO handshake on <code>/api/socket</code>.</p>
+    <p>2) It also fetches <code>/api/turn</code> and prints ICE servers.</p>
+    <pre id="log"></pre>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const $ = (id)=>document.getElementById(id);
+      const log = (...a)=>{$('log').textContent += a.join(' ') + "\n";};
+
+      try {
+        const s = io("/", { path: "/api/socket" });
+        s.on("connect", ()=>log("socket:","connected", s.id));
+        s.on("connect_error", (e)=>log("socket:","connect_error", e.message));
+      } catch(e){ log("socket: failed", e?.message || e); }
+
+      fetch("/api/turn").then(r=>r.json()).then(j=>{
+        log("turn:", JSON.stringify(j, null, 2));
+      }).catch(e=>log("turn:", "error", e?.message||e));
+    </script>
+  </body>
+</html>

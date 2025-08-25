@@ -1,0 +1,6 @@
+{
+  "functions": { "api/**": { "runtime": "nodejs22.x" } },
+  "installCommand": "pnpm install --frozen-lockfile || pnpm install",
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev -p 3000"
+}

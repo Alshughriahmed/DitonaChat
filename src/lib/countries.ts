@@ -1,0 +1,23 @@
+export type CountryItem = { code: string; name: string; emoji: string };
+export const COUNTRIES: CountryItem[] = [
+  {code:"KW", name:"Kuwait",        emoji:"🇰🇼"},
+  {code:"SA", name:"Saudi Arabia",  emoji:"🇸🇦"},
+  {code:"AE", name:"United Arab Emirates", emoji:"🇦🇪"},
+  {code:"EG", name:"Egypt",         emoji:"🇪🇬"},
+  {code:"QA", name:"Qatar",         emoji:"🇶🇦"},
+  {code:"BH", name:"Bahrain",       emoji:"🇧🇭"},
+  {code:"OM", name:"Oman",          emoji:"🇴🇲"},
+  {code:"JO", name:"Jordan",        emoji:"🇯🇴"},
+  {code:"LB", name:"Lebanon",       emoji:"🇱🇧"},
+  {code:"TR", name:"Turkey",        emoji:"🇹🇷"},
+  {code:"US", name:"United States", emoji:"🇺🇸"},
+  {code:"GB", name:"United Kingdom",emoji:"🇬🇧"},
+  {code:"DE", name:"Germany",       emoji:"🇩🇪"},
+  {code:"FR", name:"France",        emoji:"🇫🇷"},
+  {code:"IT", name:"Italy",         emoji:"🇮🇹"},
+  {code:"ES", name:"Spain",         emoji:"🇪🇸"},
+  {code:"IN", name:"India",         emoji:"🇮🇳"},
+  {code:"PK", name:"Pakistan",      emoji:"🇵🇰"},
+  {code:"BD", name:"Bangladesh",    emoji:"🇧🇩"},
+  {code:"PH", name:"Philippines",   emoji:"🇵🇭"},
+];

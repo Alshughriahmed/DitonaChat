@@ -1,0 +1,32 @@
+'use client';
+import React from 'react';
+export default function UpsellModal({open,onClose}:{open:boolean;onClose:()=>void}) {
+  if(!open) return null;
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose}/>
+      <div className="relative bg-[#121212] text-white w-[min(92vw,520px)] rounded-2xl border border-white/10 p-5 space-y-4">
+        <h3 className="text-xl font-bold">Get VIP</h3>
+        <p className="opacity-80 text-sm">Unlock filters, previous match, intro message, hide location, and more.</p>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-xl border border-white/10 p-3">
+            <div className="font-semibold">Daily</div><div className="opacity-80">€1.49 / day</div>
+          </div>
+          <div className="rounded-xl border border-white/10 p-3">
+            <div className="font-semibold">Weekly</div><div className="opacity-80">€5.99 / week</div>
+          </div>
+          <div className="rounded-xl border border-white/10 p-3">
+            <div className="font-semibold">Monthly</div><div className="opacity-80">€16.99 / month</div>
+          </div>
+          <div className="rounded-xl border border-white/10 p-3">
+            <div className="font-semibold">Yearly</div><div className="opacity-80">€99.99 / year</div>
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end">
+          <a href="/subscribe" className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20">See plans</a>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}

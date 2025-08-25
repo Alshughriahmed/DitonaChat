@@ -1,0 +1,128 @@
+src/middleware.ts-7-  const needGate = url.pathname.startsWith('/chat') || url.pathname.startsWith('/match');
+src/middleware.ts-8-  if (needGate && !ageok) {
+src/middleware.ts:9:    return NextResponse.redirect(new URL('/gate', url));
+src/middleware.ts-10-  }
+src/middleware.ts-11-  return NextResponse.next();
+--
+src/components/HeaderLite.tsx-14-        </Link>
+src/components/HeaderLite.tsx-15-        <nav className="flex items-center gap-3">
+src/components/HeaderLite.tsx:16:          <span className="text-xs rounded border border-white/15 px-2 py-1 opacity-80">18+</span>
+src/components/HeaderLite.tsx-17-          <Link
+src/components/HeaderLite.tsx-18-            href="/api/auth/signin?callbackUrl=%2Fchat"
+--
+src/app/page.tsx-2-import type { Viewport } from 'next';
+src/app/page.tsx-3-import { redirect } from "next/navigation";
+src/app/page.tsx:4:export default function Index(){ redirect("/home"); }
+--
+src/app/legal/terms/page.tsx-6-      <p>Last updated: 2025-08-19</p>
+src/app/legal/terms/page.tsx-7-      <h2>Eligibility</h2>
+src/app/legal/terms/page.tsx:8:      <p>DitonaChat is for adults (18+) only. By using the Service, you confirm you are at least 18.</p>
+src/app/legal/terms/page.tsx-9-      <h2>Accounts & Access</h2>
+src/app/legal/terms/page.tsx-10-      <p>Sign-in is via email magic link (no passwords). You are responsible for access to your email account.</p>
+--
+src/app/legal/privacy/page.tsx-6-      <p>Last updated: 2025-08-19</p>
+src/app/legal/privacy/page.tsx-7-      <h2>Who we are</h2>
+src/app/legal/privacy/page.tsx:8:      <p>DitonaChat provides an 18+ chat experience. Contact: <a href="mailto:info@ditonachat.com">info@ditonachat.com</a></p>
+src/app/legal/privacy/page.tsx-9-      <h2>Data we process</h2>
+src/app/legal/privacy/page.tsx-10-      <ul>
+--
+src/app/home/page.tsx-24-      {/* Header: Login/Sign up + +18 badge */}
+src/app/home/page.tsx-25-      <header style={{display:'flex',justifyContent:'flex-end',gap:12,alignItems:'center',padding:'16px 20px'}}>
+src/app/home/page.tsx:26:        <span style={{padding:'2px 8px',border:'1px solid #ff4d4f',borderRadius:999,color:'#ff4d4f',fontWeight:600,fontSize:12}}>18+</span>
+src/app/home/page.tsx-27-        <Link href="/api/auth/signin" className="hover:underline">Login</Link>
+src/app/home/page.tsx-28-        <Link href="/api/auth/signin" className="hover:underline">Sign up</Link>
+--
+src/app/home/StartGate.client.tsx-34-          checked={ageOk}
+src/app/home/StartGate.client.tsx-35-          onChange={e => onAgeChange(e.target.checked)}
+src/app/home/StartGate.client.tsx:36:          aria-label="I confirm I am 18+"
+src/app/home/StartGate.client.tsx-37-        />
+src/app/home/StartGate.client.tsx:38:        I confirm I am 18+
+src/app/home/StartGate.client.tsx-39-      </label>
+src/app/home/StartGate.client.tsx-40-
+--
+src/app/gate/page.tsx-5-import NextDynamic from "next/dynamic";
+src/app/gate/page.tsx-6-
+src/app/gate/page.tsx:7:const AgeGate = NextDynamic(() => import("./AgeGate.client"), { ssr: false });
+src/app/gate/page.tsx-8-
+src/app/gate/page.tsx-9-export default function GatePage() {
+--
+src/app/gate/page.tsx-12-      {/* Header strip (top-right) */}
+src/app/gate/page.tsx-13-      <div className="absolute top-4 right-4 flex items-center gap-3 text-white">
+src/app/gate/page.tsx:14:        <span className="inline-block text-xs px-2 py-1 rounded bg-red-600">18+</span>
+src/app/gate/page.tsx-15-        <Link className="underline text-sm" href="/api/auth/signin">Login</Link>
+src/app/gate/page.tsx-16-        <Link className="underline text-sm" href="/api/auth/signin?prompt=select_account">Sign up</Link>
+--
+src/app/gate/page.tsx-18-
+src/app/gate/page.tsx-19-      <div className="bg-black/40 backdrop-blur rounded-2xl p-6 w-full max-w-md border border-white/10 text-white text-center">
+src/app/gate/page.tsx:20:        <h1 className="text-3xl font-bold mb-2">دخول 18+</h1>
+src/app/gate/page.tsx:21:        <p className="text-sm opacity-80 mb-4">Please confirm you are 18+ to continue to chat.</p>
+src/app/gate/page.tsx-22-
+src/app/gate/page.tsx-23-        {/* Client gate */}
+src/app/gate/page.tsx:24:        <AgeGate />
+src/app/gate/page.tsx-25-
+src/app/gate/page.tsx-26-        {/* SSR fallback so text is present even before hydration */}
+--
+src/app/gate/hide-legacy-header.css:1:/* يخفي الهيدر القديم (الذي يحمل z-40) في صفحة /gate فقط */
+src/app/gate/hide-legacy-header.css-2-header.sticky.top-0.z-40 { display: none !important; }
+--
+src/app/gate/AgeGate.client.tsx-6-const MODE = (process.env.NEXT_PUBLIC_AGE_VERIF_METHOD || 'cookie').toLowerCase();
+src/app/gate/AgeGate.client.tsx-7-
+src/app/gate/AgeGate.client.tsx:8:export default function AgeGateClient() {
+src/app/gate/AgeGate.client.tsx-9-  const router = useRouter();
+src/app/gate/AgeGate.client.tsx-10-  const [gender, setGender] = useState('');
+--
+src/app/gate/AgeGate.client.tsx-37-      router.push('/chat');
+src/app/gate/AgeGate.client.tsx-38-    } catch (e) {
+src/app/gate/AgeGate.client.tsx:39:      console.error('[AgeGate] error', e);
+src/app/gate/AgeGate.client.tsx-40-    } finally {
+src/app/gate/AgeGate.client.tsx-41-      setBusy(false);
+--
+src/app/gate/AgeGate.client.tsx-60-      <label className="flex items-center gap-2 mb-4">
+src/app/gate/AgeGate.client.tsx-61-        <input type="checkbox" checked={agree} onChange={(e)=>setAgree(e.target.checked)} />
+src/app/gate/AgeGate.client.tsx:62:        <span>I confirm I am 18+</span>
+src/app/gate/AgeGate.client.tsx-63-      </label>
+src/app/gate/AgeGate.client.tsx-64-
+--
+src/app/api/age/allow/route.ts-3-export async function GET(req: Request) {
+src/app/api/age/allow/route.ts-4-  const url = new URL(req.url);
+src/app/api/age/allow/route.ts:5:  const res = NextResponse.redirect(new URL('/chat', url));
+src/app/api/age/allow/route.ts-6-  res.cookies.set('ageok', '1', { path: '/', maxAge: 60*60*24*365, sameSite: 'lax' });
+src/app/api/age/allow/route.ts-7-  return res;
+--
+src/app/age/page.tsx-3-
+src/app/age/page.tsx-4-import { useEffect, useState } from "react";
+src/app/age/page.tsx:5:export default function AgeGatePage() {
+src/app/age/page.tsx-6-  const [accepted, setAccepted] = useState(false);
+src/app/age/page.tsx-7-  const [error, setError] = useState("");
+--
+src/app/age/page.tsx-9-  useEffect(() => {
+src/app/age/page.tsx-10-    // إذا لديه الكوكي مسبقاً، رجّعه للصفحة السابقة
+src/app/age/page.tsx:11:    const has = document.cookie.split("; ").some((c) => c.startsWith("age_ok=1"));
+src/app/age/page.tsx-12-    if (has) {
+src/app/age/page.tsx-13-      const back = sessionStorage.getItem("age_back") || "/";
+--
+src/app/age/page.tsx-23-      }
+src/app/age/page.tsx-24-      // ضع الكوكي لسنة
+src/app/age/page.tsx:25:      document.cookie = "age_ok=1; path=/; max-age=31536000; samesite=lax";
+src/app/age/page.tsx-26-      setAccepted(true);
+src/app/age/page.tsx-27-      const back = sessionStorage.getItem("age_back") || "/";
+--
+src/app/age/page.tsx-40-    <main className="min-h-screen flex items-center justify-center bg-black text-white p-6">
+src/app/age/page.tsx-41-      <div className="max-w-md w-full rounded-2xl p-8 border border-white/10 bg-white/5 backdrop-blur">
+src/app/age/page.tsx:42:        <h1 className="text-2xl font-semibold mb-3">Adults Only (18+)</h1>
+src/app/age/page.tsx-43-        <p className="text-sm text-white/80 mb-6">
+src/app/age/page.tsx:44:          هذا الموقع مخصّص للبالغين (+18). بالضغط على "أنا 18+" فأنت تقرّ بأن عمرك 18 سنة أو أكثر.
+src/app/age/page.tsx-45-        </p>
+src/app/age/page.tsx-46-        {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
+--
+src/app/age/page.tsx-51-            className="flex-1 rounded-xl py-3 px-4 bg-emerald-600 hover:bg-emerald-500 transition"
+src/app/age/page.tsx-52-          >
+src/app/age/page.tsx:53:            أنا 18+
+src/app/age/page.tsx-54-          </button>
+src/app/age/page.tsx-55-          <button
+--
+src/app/age/page.tsx-61-        </div>
+src/app/age/page.tsx-62-        <p className="text-xs text-white/60 mt-4">
+src/app/age/page.tsx:63:          بالضغط على "أنا 18+" ستُحفظ موافقتك لمدة 12 شهرًا (Cookie).
+src/app/age/page.tsx-64-        </p>
+src/app/age/page.tsx-65-      </div>

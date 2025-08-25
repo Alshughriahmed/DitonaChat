@@ -1,0 +1,21 @@
+src/components/HeaderLite.tsx:16:          <span className="text-xs rounded border border-white/15 px-2 py-1 opacity-80">18+</span>
+src/app/legal/terms/page.tsx:8:      <p>DitonaChat is for adults (18+) only. By using the Service, you confirm you are at least 18.</p>
+src/app/legal/privacy/page.tsx:8:      <p>DitonaChat provides an 18+ chat experience. Contact: <a href="mailto:info@ditonachat.com">info@ditonachat.com</a></p>
+src/app/home/page.tsx:26:        <span style={{padding:'2px 8px',border:'1px solid #ff4d4f',borderRadius:999,color:'#ff4d4f',fontWeight:600,fontSize:12}}>18+</span>
+src/app/home/StartGate.client.tsx:36:          aria-label="I confirm I am 18+"
+src/app/home/StartGate.client.tsx:38:        I confirm I am 18+
+src/app/gate/page.tsx:7:const AgeGate = NextDynamic(() => import("./AgeGate.client"), { ssr: false });
+src/app/gate/page.tsx:14:        <span className="inline-block text-xs px-2 py-1 rounded bg-red-600">18+</span>
+src/app/gate/page.tsx:20:        <h1 className="text-3xl font-bold mb-2">دخول 18+</h1>
+src/app/gate/page.tsx:21:        <p className="text-sm opacity-80 mb-4">Please confirm you are 18+ to continue to chat.</p>
+src/app/gate/page.tsx:24:        <AgeGate />
+src/app/gate/AgeGate.client.tsx:8:export default function AgeGateClient() {
+src/app/gate/AgeGate.client.tsx:39:      console.error('[AgeGate] error', e);
+src/app/gate/AgeGate.client.tsx:62:        <span>I confirm I am 18+</span>
+src/app/age/page.tsx:5:export default function AgeGatePage() {
+src/app/age/page.tsx:11:    const has = document.cookie.split("; ").some((c) => c.startsWith("age_ok=1"));
+src/app/age/page.tsx:25:      document.cookie = "age_ok=1; path=/; max-age=31536000; samesite=lax";
+src/app/age/page.tsx:42:        <h1 className="text-2xl font-semibold mb-3">Adults Only (18+)</h1>
+src/app/age/page.tsx:44:          هذا الموقع مخصّص للبالغين (+18). بالضغط على "أنا 18+" فأنت تقرّ بأن عمرك 18 سنة أو أكثر.
+src/app/age/page.tsx:53:            أنا 18+
+src/app/age/page.tsx:63:          بالضغط على "أنا 18+" ستُحفظ موافقتك لمدة 12 شهرًا (Cookie).

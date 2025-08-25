@@ -1,0 +1,204 @@
+"use client";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import Toolbar from "@/components/chat/Toolbar";
+import LowerRightQuick from "@/components/chat/LowerRightQuick";
+import ChatComposer from "@/components/chat/ChatComposer";
+import ChatMessages from "@/components/chat/ChatMessages";
+import PeerHeader from "@/components/chat/PeerHeader";
+import type { Filters, PeerInfo } from "@/components/chat/PeerHeader";
+import { RtcClient } from "@/utils/rtcClient";
+import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
+import { useSocketProbe } from "@/hooks/useSocketProbe";
+
+type ChatMsg = { id: string; from: "me" | "peer"; text: string; at?: number };
+
+const H_SWIPE_PX = 80;   // Prev/Next
+const V_TOGGLE_PX = 50;  // latest↔history
+const AUTO_DIM_MS = 5000;
+
+export default function ChatPage() {
+  useSocketProbe(); // connects only when NEXT_PUBLIC_SOCKET_URL is set
+
+  // demo messages
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    { id: "m1", from: "peer", text: "👋 Hi there" },
+    { id: "m2", from: "me", text: "Hello!" },
+  ]);
+  const addMessage = useCallback((t: string) => {
+    setMessages((xs) => [...xs, { id: String(Date.now()), from: "me", text: t }]);
+  }, []);
+
+  // Beauty
+  const [beautyOn, setBeautyOn] = useState(false);
+  const [micOn, setMicOn] = useState(true);
+  const [camOn, setCamOn] = useState(true);
+  const handleBeauty = useCallback(() => setBeautyOn((v) => !v), []);
+
+  // Dock mode
+  const [dockMode, setDockMode] = useState<"latest" | "history">("latest");
+  const toLatest = useCallback(() => setDockMode("latest"), []);
+  const toHistory = useCallback(() => setDockMode("history"), []);
+
+  // RTC client & video refs
+  const rtcRef = useRef<RtcClient | null>(null);
+  const vLocal = useRef<HTMLVideoElement | null>(null);
+  const vRemote = useRef<HTMLVideoElement | null>(null);
+  const [connState, setConnState] = useState<RTCPeerConnectionState>("new");
+  const [lastIce, setLastIce] = useState<"host"|"srflx"|"relay"|"">("");
+
+  // Start local preview on mount
+  const [mediaErr, setMediaErr] = useState<string | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const rtc = new RtcClient();
+        rtcRef.current = rtc;
+        const { local } = await rtc.start(true);
+        if (!mounted) return;
+        if (vLocal.current) {
+          vLocal.current.srcObject = local;
+          vLocal.current.muted = true;
+          vLocal.current.playsInline = true;
+          await vLocal.current.play().catch(() => {});
+        }
+        // attach listeners to pc
+        try {
+          const pc = rtc.pc!;
+          const prevIce = pc.onicecandidate;
+          pc.onicecandidate = (ev) => {
+            try {
+              const c = ev.candidate?.candidate || "";
+              if (c.includes(" typ relay")) setLastIce("relay");
+              else if (c.includes(" typ srflx")) setLastIce("srflx");
+              else if (c.includes(" typ host")) setLastIce("host");
+            } catch {}
+            if (prevIce) try { (prevIce as any)(ev); } catch {}
+          };
+          pc.onconnectionstatechange = () => setConnState(pc.connectionState);
+        } catch {}
+      } catch (e: any) {
+        setMediaErr(e?.message || "getUserMedia failed");
+      }
+    })();
+    return () => { mounted = false; rtcRef.current?.stop(); };
+  }, []);
+
+  // Pause/resume videos on tab visibility (battery friendly)
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) { vLocal.current?.pause(); vRemote.current?.pause(); }
+      else { vLocal.current?.play().catch(()=>{}); vRemote.current?.play().catch(()=>{}); }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  const handleToggleMic = useCallback(() => {
+    const tracks = rtcRef.current?.local?.getAudioTracks() || [];
+    const next = !micOn; setMicOn(next);
+    tracks.forEach(t => t.enabled = next);
+  }, [micOn]);
+
+  const handleToggleCam = useCallback(() => {
+    const tracks = rtcRef.current?.local?.getVideoTracks() || [];
+    const next = !camOn; setCamOn(next);
+    tracks.forEach(t => t.enabled = next);
+  }, [camOn]);
+
+  const handleSwitchCam = useCallback(async () => {
+    try { await rtcRef.current?.switchCamera(); } catch {}
+  }, []);
+
+  // swipe detection
+  const startX = useRef(0), startY = useRef(0), active = useRef(false);
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    active.current = true; startX.current = e.clientX; startY.current = e.clientY;
+  }, []);
+  const handlePrev = useCallback(() => {}, []);
+  const handleNext = useCallback(() => {}, []);
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!active.current) return;
+    const dx = e.clientX - startX.current, dy = e.clientY - startY.current;
+    const ax = Math.abs(dx), ay = Math.abs(dy);
+    if (ay >= V_TOGGLE_PX && ay > ax) { if (dy < 0) toHistory(); else toLatest(); active.current = false; return; }
+    if (ax >= H_SWIPE_PX && ax > ay)  { if (dx > 0) handlePrev(); else handleNext(); active.current = false; }
+  }, [toHistory, toLatest]);
+  const onPointerUp = useCallback(() => { active.current = false; }, []);
+
+  // auto-dim
+  const [idle, setIdle] = useState(false);
+  const idleTimer = useRef<number | null>(null);
+  const bump = useCallback(() => {
+    setIdle(false);
+    if (idleTimer.current) window.clearTimeout(idleTimer.current);
+    // @ts-ignore
+    idleTimer.current = window.setTimeout(() => setIdle(true), AUTO_DIM_MS);
+  }, []);
+  useEffect(() => {
+    bump();
+    const reset = () => bump();
+    const events = ["pointerdown", "mousemove", "keydown", "touchstart"];
+    events.forEach((n) => window.addEventListener(n, reset, { passive: true }));
+    return () => events.forEach((n) => window.removeEventListener(n, reset));
+  }, [bump]);
+
+  return (
+    <main className="min-h-[100dvh] w-screen overflow-hidden text-white bg-gradient-to-b from-slate-900 via-slate-900 to-black">
+      {/* Grid: 2 video rows + toolbar + composer */}
+      <div
+        className="grid grid-rows-[1fr_1fr_auto_auto] h-[100dvh] chat-safe-pad"
+        style={{ touchAction: "manipulation" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+      >
+        {/* Row 1: LOCAL video */}
+        <div className="relative">
+          <div className={beautyOn ? "beauty-filters h-full w-full" : "h-full w-full"}>
+            <video ref={vLocal} className="h-full w-full object-cover rounded-2xl bg-black" />
+          </div>
+          {mediaErr && (
+            <div className="absolute inset-0 grid place-items-center text-sm text-white/80">
+              <div className="px-3 py-2 rounded bg-black/40 border border-white/10">{mediaErr}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Row 2: REMOTE + overlays */}
+        <div className="relative">
+          <div className={beautyOn ? "beauty-filters h-full w-full" : "h-full w-full"}>
+            <video ref={vRemote} className="h-full w-full object-cover rounded-2xl bg-black/50" />
+          </div>
+
+          {/* conn pill (state + last ICE) */}
+          <div className="absolute left-2 top-2 z-30 pointer-events-none">
+            <span className="pointer-events-auto rounded-full px-2 py-1 text-xs bg-black/50 border border-white/10">
+              <strong>{connState}</strong>{lastIce ? (" · " + lastIce) : ""}
+            </span>
+          </div>
+
+          {/* message dock */}
+          <div className={`absolute inset-x-2 bottom-2 transition-opacity ${idle ? "opacity-70" : "opacity-100"}`}>
+            <ChatMessages items={messages} mode={dockMode} />
+          </div>
+
+          {/* quick actions (top-right) */}
+          <div className="absolute right-2 top-2">
+            <LowerRightQuick onSwitchCam={handleSwitchCam} onBeauty={handleBeauty} beautyOn={beautyOn} likesCount={likesCount} isVip={isVip} />
+          </div>
+        </div>
+
+        {/* Row 3: Toolbar */}
+        <div className={`transition-opacity ${idle ? "opacity-70" : "opacity-100"}`}>
+          <Toolbar onPrev={handlePrev} onNext={handleNext} micOn={micOn} camOn={camOn} onToggleMic={handleToggleMic} onToggleCam={handleToggleCam} />
+        </div>
+
+        {/* Row 4: Composer */}
+        <div>
+          <ChatComposer onSend={addMessage} />
+        </div>
+      </div>
+    </main>
+  );
+}

@@ -1,0 +1,2 @@
+/* يخفي الهيدر القديم (الذي يحمل z-40) في صفحة /gate فقط */
+header.sticky.top-0.z-40 { display: none !important; }

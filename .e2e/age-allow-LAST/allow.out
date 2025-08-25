@@ -1,0 +1,9 @@
+HTTP/1.1 307 Temporary Redirect
+vary: RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Url
+location: http://0.0.0.0:3000/chat
+set-cookie: ageok=1; Path=/; Expires=Sun, 23 Aug 2026 16:56:06 GMT; Max-Age=31536000; SameSite=lax
+Date: Sat, 23 Aug 2025 16:56:06 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+

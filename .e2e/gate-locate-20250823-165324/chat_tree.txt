@@ -1,0 +1,9 @@
+src/app/chat/head.tsx
+src/app/chat/layout.tsx
+src/app/chat/page.client.tsx
+src/app/chat/page.module.css
+src/app/chat/page.tsx
+src/app/chat/[room]
+src/app/chat/SafelistSSR.tsx
+src/app/chat/template.tsx
+src/app/chat/ToolbarPlaceholder.tsx

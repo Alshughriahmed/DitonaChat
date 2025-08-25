@@ -1,0 +1,91 @@
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+
+export type ChatMsg = { id: string; from: "me"|"peer"; text: string; at?: number };
+
+export default function ChatMessages({
+  items,
+  mode,
+  onLoadMore,
+}: {
+  items: ChatMsg[];
+  mode: "latest" | "history";
+  onLoadMore?: () => void; // optional: trigger when reaching top in history mode
+}) {
+  // Reduce list for 'latest' mode (last 3 messages)
+  const list = useMemo(() => (mode === "latest" ? items.slice(-3) : items), [items, mode]);
+
+  // --- Long-press copy (works on touch & mouse) ---
+  const pressTimer = useRef<number | null>(null);
+  const startPress = useCallback((msg: ChatMsg) => {
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+    // 450ms threshold
+    // @ts-ignore
+    pressTimer.current = window.setTimeout(async () => {
+      try {
+        await navigator.clipboard?.writeText?.(msg.text);
+        // optional: could dispatch a toast event here
+        // console.log("copied");
+      } catch {}
+    }, 450);
+  }, []);
+  const endPress = useCallback(() => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  }, []);
+
+  // --- Top sentinel to load older messages in 'history' ---
+  const topRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (mode !== "history" || !topRef.current) return;
+    const el = topRef.current;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            onLoadMore?.();
+          }
+        }
+      },
+      { root: null, rootMargin: "0px", threshold: 1.0 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [mode, onLoadMore]);
+
+  // Container: translucent dock in 'latest' with max height var, full scroll in 'history'
+  const containerCls =
+    mode === "latest"
+      ? // translucent dock: blur + background from globals, limited height
+        "z-10 dock-blur rounded-xl p-2 max-h-[var(--dock-max-h)] overflow-y-auto no-scrollbar"
+      : // full history: scrollable, transparent bg
+        "z-10 p-2 overflow-y-auto no-scrollbar";
+
+  return (
+    <div className={containerCls}>
+      {mode === "history" && <div ref={topRef} className="h-1 w-full" />}
+      <div className={`flex flex-col gap-2 ${mode === "latest" ? "pt-2" : ""}`}>
+        {list.map((m) => (
+          <div
+            key={m.id}
+            className={`max-w-[75%] px-3 py-2 rounded-2xl select-text ${
+              m.from === "me" ? "self-end" : "self-start"
+            } bubble-translucent text-white backdrop-blur-sm`}
+            onPointerDown={() => startPress(m)}
+            onPointerUp={endPress}
+            onPointerCancel={endPress}
+            onTouchStart={() => startPress(m)}
+            onTouchEnd={endPress}
+            onMouseDown={() => startPress(m)}
+            onMouseUp={endPress}
+          >
+            {m.text}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+{copied && (<div className="fixed inset-x-0 bottom-[calc(var(--tb-h,44px)+var(--composer-h,0px)+24px)] z-50 grid place-items-center pointer-events-none"><div className="pointer-events-auto px-3 py-1 rounded-full text-xs bg-black/70 border border-white/10">Copied</div></div>)}

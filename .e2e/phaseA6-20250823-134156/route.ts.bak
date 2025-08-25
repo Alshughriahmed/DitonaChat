@@ -1,0 +1,21 @@
+// TEMP: MVP M1 Stub — Likes API disabled until Prisma (M2)
+// Reason: Auth is JWT-only now; Prisma schema is deferred.
+// Returns 501 to avoid silent failure on clients.
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions).catch(() => null);
+  if (!session) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+  return NextResponse.json(
+    {
+      ok: false,
+      disabled: true,
+      reason: "Likes API temporarily disabled in MVP (M1) — Prisma deferred to M2."
+    },
+    { status: 501 }
+  );
+}

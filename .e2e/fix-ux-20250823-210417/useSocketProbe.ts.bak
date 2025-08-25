@@ -1,0 +1,46 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+type State = "idle" | "connecting" | "connected" | "error";
+
+/**
+ * يتصل بسيرفر Socket.io إن كان NEXT_PUBLIC_SOCKET_URL مضبوطًا.
+ * يُرجع حالة الاتصال، ويمكن تجاهل القيمة إن لم تكن مطلوبة.
+ */
+export default function useSocketProbe(): State {
+  const url = process.env.NEXT_PUBLIC_SOCKET_URL;
+  const [state, setState] = useState<State>("idle");
+  const sockRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!url) return; // لا شيء إن لم يوجد URL
+    let closed = false;
+
+    (async () => {
+      try {
+        setState("connecting");
+        const { io } = await import("socket.io-client");
+        const s = io(url, {
+          transports: ["websocket"],
+          autoConnect: true,
+        });
+        sockRef.current = s;
+
+        s.on("connect", () => !closed && setState("connected"));
+        s.on("connect_error", () => !closed && setState("error"));
+        s.on("error", () => !closed && setState("error"));
+      } catch {
+        if (!closed) setState("error");
+      }
+    })();
+
+    return () => {
+      closed = true;
+      try { sockRef.current?.close?.(); } catch {}
+      sockRef.current = null;
+    };
+  }, [url]);
+
+  return state;
+}
